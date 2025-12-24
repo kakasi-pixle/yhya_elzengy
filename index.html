@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>لعبة السفينة</title>
+
 <style>
 body {
   margin: 0;
@@ -21,7 +22,7 @@ canvas {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.25);
 }
 #stick {
   position: absolute;
@@ -48,43 +49,54 @@ const ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-let player = { x: canvas.width/2, y: canvas.height-150, size: 20 };
+// تحميل صورة الفوز مرة واحدة
+const winImage = new Image();
+winImage.src = "https://qu.ax/tMWYs";
+
+// اللاعب
+let player = {
+  x: canvas.width / 2,
+  y: canvas.height - 160,
+  size: 20
+};
+
+// المتغيرات
 let enemies = [];
 let lasers = [];
 let killed = 0;
-let spawnCount = 0;
+let spawned = 0;
 let gameWon = false;
 
-// 🟥 سباون عدو واحد كل شوية
+// سباون عدو واحد واحد (حد أقصى 10)
 function spawnEnemy() {
-  if (spawnCount < 10) {
+  if (spawned < 10) {
     enemies.push({
       x: Math.random() * (canvas.width - 60) + 30,
-      y: -30,
+      y: -40,
       size: 30,
       alive: true
     });
-    spawnCount++;
+    spawned++;
   }
 }
 
-// 🔥 ضرب تلقائي (شعاع)
+// سباون تدريجي
+setInterval(() => {
+  if (!gameWon) spawnEnemy();
+}, 900);
+
+// ضرب تلقائي (ليزر)
 setInterval(() => {
   if (!gameWon) {
     lasers.push({ x: player.x, y: player.y });
   }
 }, 400);
 
-// 🟥 سباون متدرج
-setInterval(() => {
-  if (!gameWon) spawnEnemy();
-}, 800);
-
 // 🎮 Joystick
 const joystick = document.getElementById("joystick");
 const stick = document.getElementById("stick");
-let joyActive = false;
 let joyX = 0, joyY = 0;
+let joyActive = false;
 
 joystick.addEventListener("touchstart", () => joyActive = true);
 joystick.addEventListener("touchend", () => {
@@ -99,8 +111,8 @@ joystick.addEventListener("touchmove", e => {
   let rect = joystick.getBoundingClientRect();
   let x = e.touches[0].clientX - rect.left - 60;
   let y = e.touches[0].clientY - rect.top - 60;
-  let dist = Math.min(40, Math.hypot(x,y));
-  let angle = Math.atan2(y,x);
+  let dist = Math.min(40, Math.hypot(x, y));
+  let angle = Math.atan2(y, x);
   joyX = Math.cos(angle) * dist / 40;
   joyY = Math.sin(angle) * dist / 40;
   stick.style.left = 40 + joyX * 40 + "px";
@@ -108,29 +120,36 @@ joystick.addEventListener("touchmove", e => {
 });
 
 function update() {
+  // حركة اللاعب
   player.x += joyX * 6;
   player.y += joyY * 6;
 
+  // حركة الأعداء
   enemies.forEach(e => {
-    if (e.alive) e.y += 1.5;
+    if (e.alive) e.y += 1.6;
   });
 
-  lasers.forEach((l,i) => {
-    l.y -= 10;
+  // الليزر + التصادم
+  lasers.forEach((l, i) => {
+    l.y -= 12;
     enemies.forEach(e => {
-      if (e.alive && Math.abs(l.x - e.x) < e.size && Math.abs(l.y - e.y) < e.size) {
+      if (
+        e.alive &&
+        Math.abs(l.x - e.x) < e.size &&
+        Math.abs(l.y - e.y) < e.size
+      ) {
         e.alive = false;
         killed++;
       }
     });
-    if (l.y < 0) lasers.splice(i,1);
+    if (l.y < 0) lasers.splice(i, 1);
   });
 
   if (killed === 10) gameWon = true;
 }
 
 function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // اللاعب (مثلث)
   ctx.fillStyle = "lime";
@@ -140,35 +159,39 @@ function draw() {
   ctx.lineTo(player.x + 20, player.y + 20);
   ctx.fill();
 
-  // الأعداء
+  // الأعداء (مربعات)
   enemies.forEach(e => {
     if (e.alive) {
       ctx.fillStyle = "red";
-      ctx.fillRect(e.x-15, e.y-15, 30, 30);
+      ctx.fillRect(e.x - 15, e.y - 15, 30, 30);
     }
   });
 
-  // الليزر
+  // الليزر (شعاع)
   ctx.strokeStyle = "cyan";
   ctx.lineWidth = 6;
   lasers.forEach(l => {
     ctx.beginPath();
     ctx.moveTo(l.x, l.y);
-    ctx.lineTo(l.x, l.y - 40);
+    ctx.lineTo(l.x, l.y - 45);
     ctx.stroke();
   });
 
+  // شاشة الفوز
   if (gameWon) {
     ctx.fillStyle = "white";
-    ctx.font = "50px Arial";
+    ctx.font = "60px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("لقد فزت", canvas.width/2, canvas.height/2 - 120);
+    ctx.fillText("لقد فزت", canvas.width / 2, canvas.height / 2 - 220);
 
-    let img = new Image();
-    img.src = "https://qu.ax/tMWYs";
-    img.onload = () => {
-      ctx.drawImage(img, canvas.width/2 - 150, canvas.height/2 - 80, 300, 300);
-    };
+    // الصورة تحت الكلمة وكبيرة
+    ctx.drawImage(
+      winImage,
+      canvas.width / 2 - 250,
+      canvas.height / 2 - 180,
+      500,
+      500
+    );
   }
 }
 
@@ -177,6 +200,7 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
+
 loop();
 </script>
 
