@@ -56,9 +56,6 @@ mainImage.src = "zen.png"; // الصورة الكبيرة عند الفوز
 const enemyImage = new Image();
 enemyImage.src = "zen1.png"; // صورة العدو
 
-const smallImg1 = new Image(); smallImg1.src = "zen.png";
-const smallImg2 = new Image(); smallImg2.src = "zen.png";
-
 // اللاعب
 let player = { x: canvas.width/2, y: canvas.height-160, size: 25 };
 
@@ -69,10 +66,13 @@ let killed = 0;
 let spawned = 0;
 let gameWon = false;
 
+// حجم أكبر للأعداء
+const enemySize = 60;
+
 // سباون عدو واحد فقط (حد أقصى 10)
 function spawnEnemy() {
   if (spawned < 10) {
-    enemies.push({ x: Math.random()*(canvas.width-60)+30, y: -40, size: 40, alive:true });
+    enemies.push({ x: Math.random()*(canvas.width-enemySize)+enemySize/2, y: -enemySize, size: enemySize, alive:true });
     spawned++;
   }
 }
@@ -130,12 +130,6 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // الصور الصغيرة في البداية
-  if(!gameWon){
-    ctx.drawImage(smallImg1, 50, 50, 80, 80);
-    ctx.drawImage(smallImg2, canvas.width-130, 50, 80, 80);
-  }
-
   // اللاعب (سفينة أرقى)
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -177,7 +171,7 @@ function draw(){
 
   ctx.restore();
 
-  // الأعداء (الآن صور)
+  // الأعداء (صور أكبر)
   enemies.forEach(e=>{
     if(e.alive){
       ctx.drawImage(enemyImage, e.x - e.size/2, e.y - e.size/2, e.size, e.size);
