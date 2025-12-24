@@ -64,18 +64,16 @@ const ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-// الصور
-const winImage = new Image();
-winImage.src = "zen.png";
+// الصورة الأساسية
+const mainImage = new Image();
+mainImage.src = "zen.png";
 
 // الصور الصغيرة في البداية
-const smallImg1 = new Image();
-smallImg1.src = "zen.png";
-const smallImg2 = new Image();
-smallImg2.src = "zen.png";
+const smallImg1 = new Image(); smallImg1.src = "zen.png";
+const smallImg2 = new Image(); smallImg2.src = "zen.png";
 
 // اللاعب
-let player = { x: canvas.width / 2, y: canvas.height - 160, size: 25 };
+let player = { x: canvas.width/2, y: canvas.height-160, size: 25 };
 
 // المتغيرات
 let enemies = [];
@@ -91,48 +89,47 @@ retryBtn.addEventListener("click", resetGame);
 // سباون عدو واحد فقط (حد أقصى 10)
 function spawnEnemy() {
   if (spawned < 10) {
-    enemies.push({ x: Math.random() * (canvas.width - 60) + 30, y: -40, size: 30, alive: true });
+    enemies.push({ x: Math.random()*(canvas.width-60)+30, y: -40, size: 30, alive:true });
     spawned++;
   }
 }
 
 // سباون تدريجي
-setInterval(() => { if (!gameWon) spawnEnemy(); }, 900);
+setInterval(()=>{if(!gameWon) spawnEnemy();},900);
 
-// ضرب تلقائي (ليزر)
-setInterval(() => { if (!gameWon) lasers.push({ x: player.x, y: player.y }); }, 400);
+// ضرب تلقائي
+setInterval(()=>{if(!gameWon) lasers.push({x:player.x,y:player.y});},400);
 
 // Joystick
 const joystick = document.getElementById("joystick");
 const stick = document.getElementById("stick");
-let joyX = 0, joyY = 0;
-let joyActive = false;
+let joyX=0, joyY=0, joyActive=false;
 
-joystick.addEventListener("touchstart", () => joyActive = true);
-joystick.addEventListener("touchend", () => { joyActive = false; joyX = joyY = 0; stick.style.left = "40px"; stick.style.top = "40px"; });
-joystick.addEventListener("touchmove", e => {
-  if (!joyActive) return;
+joystick.addEventListener("touchstart",()=>joyActive=true);
+joystick.addEventListener("touchend",()=>{joyActive=false; joyX=joyY=0; stick.style.left="40px"; stick.style.top="40px";});
+joystick.addEventListener("touchmove", e=>{
+  if(!joyActive) return;
   let rect = joystick.getBoundingClientRect();
-  let x = e.touches[0].clientX - rect.left - 60;
-  let y = e.touches[0].clientY - rect.top - 60;
-  let dist = Math.min(40, Math.hypot(x, y));
-  let angle = Math.atan2(y, x);
-  joyX = Math.cos(angle) * dist / 40;
-  joyY = Math.sin(angle) * dist / 40;
-  stick.style.left = 40 + joyX * 40 + "px";
-  stick.style.top = 40 + joyY * 40 + "px";
+  let x = e.touches[0].clientX - rect.left -60;
+  let y = e.touches[0].clientY - rect.top -60;
+  let dist = Math.min(40, Math.hypot(x,y));
+  let angle = Math.atan2(y,x);
+  joyX = Math.cos(angle)*dist/40;
+  joyY = Math.sin(angle)*dist/40;
+  stick.style.left = 40+joyX*40+"px";
+  stick.style.top = 40+joyY*40+"px";
 });
 
-function update() {
-  if (!gameWon) {
-    player.x += joyX * 6;
-    player.y += joyY * 6;
+function update(){
+  if(!gameWon){
+    player.x += joyX*6;
+    player.y += joyY*6;
 
-    enemies.forEach(e => { if (e.alive) e.y += 1.6; });
+    enemies.forEach(e=>{if(e.alive)e.y+=1.6;});
 
-    lasers.forEach((l,i) => {
-      l.y -= 12;
-      enemies.forEach(e => {
+    lasers.forEach((l,i)=>{
+      l.y-=12;
+      enemies.forEach(e=>{
         if(e.alive && Math.abs(l.x-e.x)<e.size && Math.abs(l.y-e.y)<e.size){
           e.alive=false;
           killed++;
@@ -141,16 +138,17 @@ function update() {
       if(l.y<0) lasers.splice(i,1);
     });
 
-    if(killed===10) {
-      gameWon = true;
+    if(killed===10){
+      gameWon=true;
       retryBtn.style.display="block";
-      retryBtn.style.left = (canvas.width/2 - 75) + "px"; // فوق منتصف الصورة
-      retryBtn.style.top = (canvas.height/2 - 50) + "px";
+      // وضع الزر بعيد عن منتصف الصورة الكبيرة
+      retryBtn.style.left=(canvas.width/2 - 75)+"px";
+      retryBtn.style.top=(canvas.height/2 + 400)+"px";
     }
   }
 }
 
-function draw() {
+function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   // الصور الصغيرة في البداية
@@ -161,10 +159,10 @@ function draw() {
 
   // اللاعب (مثلث جميل)
   ctx.save();
-  ctx.translate(player.x, player.y);
-  ctx.fillStyle = "#00ffcc";
-  ctx.strokeStyle = "#00ffff";
-  ctx.lineWidth = 3;
+  ctx.translate(player.x,player.y);
+  ctx.fillStyle="#00ffcc";
+  ctx.strokeStyle="#00ffff";
+  ctx.lineWidth=3;
   ctx.beginPath();
   ctx.moveTo(0,-player.size);
   ctx.lineTo(-player.size,player.size);
@@ -175,22 +173,25 @@ function draw() {
   ctx.restore();
 
   // الأعداء
-  enemies.forEach(e => { if(e.alive){ ctx.fillStyle="#ff5555"; ctx.fillRect(e.x-15,e.y-15,30,30); }});
+  enemies.forEach(e=>{if(e.alive){ctx.fillStyle="#ff5555"; ctx.fillRect(e.x-15,e.y-15,30,30);}});
 
   // الليزر
   ctx.strokeStyle="#00ffff";
   ctx.lineWidth=6;
-  lasers.forEach(l => { ctx.beginPath(); ctx.moveTo(l.x,l.y); ctx.lineTo(l.x,l.y-50); ctx.stroke(); });
+  lasers.forEach(l=>{ctx.beginPath(); ctx.moveTo(l.x,l.y); ctx.lineTo(l.x,l.y-50); ctx.stroke();});
 
   // شاشة الفوز
   if(gameWon){
-    ctx.fillStyle="white";
-    ctx.font="70px Arial";
-    ctx.textAlign="center";
-    ctx.fillText("انت زنجي", canvas.width/2, canvas.height/2 - 300);
+    // الصورة الكبيرة
+    ctx.drawImage(mainImage, canvas.width/2 - 350, canvas.height/2 - 350, 700, 700);
 
-    // الصورة كبيرة وعريضة جدًا
-    ctx.drawImage(winImage, canvas.width/2 - 350, canvas.height/2 - 180, 700, 700);
+    // صور صغيرة حول الصورة الكبيرة (ديكور)
+    const smallPositions=[
+      [-200,-200], [250,-200], [-250,200], [200,200], [0,-300], [0,300]
+    ];
+    smallPositions.forEach(pos=>{
+      ctx.drawImage(mainImage, canvas.width/2 + pos[0], canvas.height/2 + pos[1], 100, 100);
+    });
   }
 }
 
@@ -199,14 +200,14 @@ loop();
 
 // إعادة اللعبة
 function resetGame(){
-  enemies = [];
-  lasers = [];
-  killed = 0;
-  spawned = 0;
-  gameWon = false;
+  enemies=[];
+  lasers=[];
+  killed=0;
+  spawned=0;
+  gameWon=false;
   retryBtn.style.display="none";
-  player.x = canvas.width/2;
-  player.y = canvas.height - 160;
+  player.x=canvas.width/2;
+  player.y=canvas.height-160;
 }
 </script>
 
