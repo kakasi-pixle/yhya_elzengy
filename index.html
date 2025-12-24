@@ -67,7 +67,7 @@ let spawned = 0;
 let gameWon = false;
 
 // حجم أكبر للأعداء
-const enemySize = 60;
+const enemySize = 80;
 
 // سباون عدو واحد فقط (حد أقصى 10)
 function spawnEnemy() {
@@ -103,6 +103,18 @@ joystick.addEventListener("touchmove", e=>{
   stick.style.top = 40+joyY*40+"px";
 });
 
+// صور صغيرة متحركة عند الفوز
+let flyingSmallImages = [];
+for(let i=0;i<12;i++){ // عدد أكبر من قبل
+  flyingSmallImages.push({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    angle: Math.random()*2*Math.PI,
+    speed: 1 + Math.random()*2,
+    size: 80
+  });
+}
+
 function update(){
   if(!gameWon){
     player.x += joyX*6;
@@ -124,6 +136,18 @@ function update(){
     if(killed===10){
       gameWon=true;
     }
+  } else {
+    // تحديث موقع الصور الصغيرة عند الفوز (تطير في مسار دائري)
+    flyingSmallImages.forEach(img=>{
+      img.x += Math.cos(img.angle)*img.speed;
+      img.y += Math.sin(img.angle)*img.speed;
+
+      // ابعاد الشاشة
+      if(img.x<0) img.x=canvas.width;
+      if(img.x>canvas.width) img.x=0;
+      if(img.y<0) img.y=canvas.height;
+      if(img.y>canvas.height) img.y=0;
+    });
   }
 }
 
@@ -188,12 +212,9 @@ function draw(){
     // الصورة الكبيرة
     ctx.drawImage(mainImage, canvas.width/2 - 350, canvas.height/2 - 350, 700, 700);
 
-    // صور صغيرة حول الصورة الكبيرة (5–6 صور)
-    const smallPositions=[
-      [-200,-200], [250,-200], [-250,200], [200,200], [0,-300], [0,300]
-    ];
-    smallPositions.forEach(pos=>{
-      ctx.drawImage(mainImage, canvas.width/2 + pos[0], canvas.height/2 + pos[1], 100, 100);
+    // صور صغيرة متحركة حول الشاشة
+    flyingSmallImages.forEach(img=>{
+      ctx.drawImage(mainImage, img.x - img.size/2, img.y - img.size/2, img.size, img.size);
     });
   }
 }
