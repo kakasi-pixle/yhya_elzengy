@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar">
 <head>
@@ -33,19 +34,6 @@ canvas {
   border-radius: 50%;
   background: #fff;
 }
-#retryBtn {
-  position: fixed;
-  font-size: 30px;
-  padding: 20px 50px;
-  background: #00ffff;
-  border: none;
-  border-radius: 15px;
-  cursor: pointer;
-  display: none;
-}
-#retryBtn:hover {
-  background: #00dddd;
-}
 </style>
 </head>
 <body>
@@ -55,8 +43,6 @@ canvas {
 <div id="joystick">
   <div id="stick"></div>
 </div>
-
-<button id="retryBtn">إعادة اللعب</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -81,10 +67,6 @@ let lasers = [];
 let killed = 0;
 let spawned = 0;
 let gameWon = false;
-
-// Retry button
-const retryBtn = document.getElementById("retryBtn");
-retryBtn.addEventListener("click", resetGame);
 
 // سباون عدو واحد فقط (حد أقصى 10)
 function spawnEnemy() {
@@ -140,10 +122,6 @@ function update(){
 
     if(killed===10){
       gameWon=true;
-      retryBtn.style.display="block";
-      // وضع الزر بعيد عن منتصف الصورة الكبيرة
-      retryBtn.style.left=(canvas.width/2 - 75)+"px";
-      retryBtn.style.top=(canvas.height/2 + 400)+"px";
     }
   }
 }
@@ -157,19 +135,46 @@ function draw(){
     ctx.drawImage(smallImg2, canvas.width-130, 50, 80, 80);
   }
 
-  // اللاعب (مثلث جميل)
+  // اللاعب (سفينة أرقى)
   ctx.save();
-  ctx.translate(player.x,player.y);
-  ctx.fillStyle="#00ffcc";
-  ctx.strokeStyle="#00ffff";
-  ctx.lineWidth=3;
+  ctx.translate(player.x, player.y);
+
+  // شكل سفينة متطور: جسم مركزي + جناحين + شعاع أمامي
+  // الجسم المركزي
+  ctx.fillStyle = "#00ffcc";
+  ctx.strokeStyle = "#00ffff";
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(0,-player.size);
-  ctx.lineTo(-player.size,player.size);
-  ctx.lineTo(player.size,player.size);
+  ctx.ellipse(0,0, player.size, player.size/1.5, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+
+  // الجناح الأيسر
+  ctx.beginPath();
+  ctx.moveTo(-player.size,0);
+  ctx.lineTo(-player.size-15,5);
+  ctx.lineTo(-player.size-15,-5);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+
+  // الجناح الأيمن
+  ctx.beginPath();
+  ctx.moveTo(player.size,0);
+  ctx.lineTo(player.size+15,5);
+  ctx.lineTo(player.size+15,-5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // الشعاع الأمامي
+  ctx.beginPath();
+  ctx.moveTo(0,-player.size*1.2);
+  ctx.lineTo(0,-player.size*2);
+  ctx.strokeStyle="#00ffff";
+  ctx.lineWidth=4;
+  ctx.stroke();
+
   ctx.restore();
 
   // الأعداء
@@ -185,7 +190,7 @@ function draw(){
     // الصورة الكبيرة
     ctx.drawImage(mainImage, canvas.width/2 - 350, canvas.height/2 - 350, 700, 700);
 
-    // صور صغيرة حول الصورة الكبيرة (ديكور)
+    // صور صغيرة حول الصورة الكبيرة (5–6 صور)
     const smallPositions=[
       [-200,-200], [250,-200], [-250,200], [200,200], [0,-300], [0,300]
     ];
@@ -197,18 +202,6 @@ function draw(){
 
 function loop(){ update(); draw(); requestAnimationFrame(loop); }
 loop();
-
-// إعادة اللعبة
-function resetGame(){
-  enemies=[];
-  lasers=[];
-  killed=0;
-  spawned=0;
-  gameWon=false;
-  retryBtn.style.display="none";
-  player.x=canvas.width/2;
-  player.y=canvas.height-160;
-}
 </script>
 
 </body>
