@@ -1,19 +1,20 @@
+
 <!DOCTYPE html>
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>اقتل الزنوج</title>
+<title>لعبة السفينة</title>
 
 <style>
 body {
   margin: 0;
   overflow: hidden;
-  background: black;
+  background: #001022;
   touch-action: none;
+  font-family: Arial, sans-serif;
 }
 canvas {
   display: block;
-  background: #001;
 }
 #joystick {
   position: fixed;
@@ -22,7 +23,7 @@ canvas {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.2);
 }
 #stick {
   position: absolute;
@@ -31,7 +32,23 @@ canvas {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: white;
+  background: #fff;
+}
+#retryBtn {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 20px 50px;
+  font-size: 30px;
+  background: #00ffff;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  display: none;
+}
+#retryBtn:hover {
+  background: #00dddd;
 }
 </style>
 </head>
@@ -43,22 +60,20 @@ canvas {
   <div id="stick"></div>
 </div>
 
+<button id="retryBtn">إعادة اللعب</button>
+
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-// تحميل صورة الفوز المحلية
+// صورة الفوز
 const winImage = new Image();
-winImage.src = "zen.png"; // الصورة اللي حطيتها
+winImage.src = "zen.png";
 
 // اللاعب
-let player = {
-  x: canvas.width / 2,
-  y: canvas.height - 160,
-  size: 20
-};
+let player = { x: canvas.width / 2, y: canvas.height - 160, size: 25 };
 
 // المتغيرات
 let enemies = [];
@@ -67,45 +82,32 @@ let killed = 0;
 let spawned = 0;
 let gameWon = false;
 
-// سباون عدو واحد واحد (حد أقصى 10)
+// Retry button
+const retryBtn = document.getElementById("retryBtn");
+retryBtn.addEventListener("click", resetGame);
+
+// سباون عدو واحد فقط (حد أقصى 10)
 function spawnEnemy() {
   if (spawned < 10) {
-    enemies.push({
-      x: Math.random() * (canvas.width - 60) + 30,
-      y: -40,
-      size: 30,
-      alive: true
-    });
+    enemies.push({ x: Math.random() * (canvas.width - 60) + 30, y: -40, size: 30, alive: true });
     spawned++;
   }
 }
 
 // سباون تدريجي
-setInterval(() => {
-  if (!gameWon) spawnEnemy();
-}, 900);
+setInterval(() => { if (!gameWon) spawnEnemy(); }, 900);
 
 // ضرب تلقائي (ليزر)
-setInterval(() => {
-  if (!gameWon) {
-    lasers.push({ x: player.x, y: player.y });
-  }
-}, 400);
+setInterval(() => { if (!gameWon) lasers.push({ x: player.x, y: player.y }); }, 400);
 
-// 🎮 Joystick
+// Joystick
 const joystick = document.getElementById("joystick");
 const stick = document.getElementById("stick");
 let joyX = 0, joyY = 0;
 let joyActive = false;
 
 joystick.addEventListener("touchstart", () => joyActive = true);
-joystick.addEventListener("touchend", () => {
-  joyActive = false;
-  joyX = joyY = 0;
-  stick.style.left = "40px";
-  stick.style.top = "40px";
-});
-
+joystick.addEventListener("touchend", () => { joyActive = false; joyX = joyY = 0; stick.style.left = "40px"; stick.style.top = "40px"; });
 joystick.addEventListener("touchmove", e => {
   if (!joyActive) return;
   let rect = joystick.getBoundingClientRect();
@@ -120,88 +122,80 @@ joystick.addEventListener("touchmove", e => {
 });
 
 function update() {
-  // حركة اللاعب
-  player.x += joyX * 6;
-  player.y += joyY * 6;
+  if (!gameWon) {
+    player.x += joyX * 6;
+    player.y += joyY * 6;
 
-  // حركة الأعداء
-  enemies.forEach(e => {
-    if (e.alive) e.y += 1.6;
-  });
+    enemies.forEach(e => { if (e.alive) e.y += 1.6; });
 
-  // الليزر + التصادم
-  lasers.forEach((l, i) => {
-    l.y -= 12;
-    enemies.forEach(e => {
-      if (
-        e.alive &&
-        Math.abs(l.x - e.x) < e.size &&
-        Math.abs(l.y - e.y) < e.size
-      ) {
-        e.alive = false;
-        killed++;
-      }
+    lasers.forEach((l,i) => {
+      l.y -= 12;
+      enemies.forEach(e => {
+        if(e.alive && Math.abs(l.x-e.x)<e.size && Math.abs(l.y-e.y)<e.size){
+          e.alive=false;
+          killed++;
+        }
+      });
+      if(l.y<0) lasers.splice(i,1);
     });
-    if (l.y < 0) lasers.splice(i, 1);
-  });
 
-  if (killed === 10) gameWon = true;
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // اللاعب (مثلث)
-  ctx.fillStyle = "lime";
-  ctx.beginPath();
-  ctx.moveTo(player.x, player.y - 20);
-  ctx.lineTo(player.x - 20, player.y + 20);
-  ctx.lineTo(player.x + 20, player.y + 20);
-  ctx.fill();
-
-  // الأعداء (مربعات)
-  enemies.forEach(e => {
-    if (e.alive) {
-      ctx.fillStyle = "red";
-      ctx.fillRect(e.x - 15, e.y - 15, 30, 30);
+    if(killed===10) {
+      gameWon = true;
+      retryBtn.style.display = "block";
     }
-  });
-
-  // الليزر (شعاع)
-  ctx.strokeStyle = "cyan";
-  ctx.lineWidth = 6;
-  lasers.forEach(l => {
-    ctx.beginPath();
-    ctx.moveTo(l.x, l.y);
-    ctx.lineTo(l.x, l.y - 45);
-    ctx.stroke();
-  });
-
-  // شاشة الفوز
-  if (gameWon) {
-    ctx.fillStyle = "white";
-    ctx.font = "60px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("انت زنجي", canvas.width / 2, canvas.height / 2 - 220);
-
-    // الصورة تحت الكلمة وكبيرة
-    ctx.drawImage(
-      winImage,
-      canvas.width / 2 - 250,
-      canvas.height / 2 - 180,
-      500,
-      500
-    );
   }
 }
 
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // اللاعب (مثلث جميل)
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.fillStyle = "#00ffcc";
+  ctx.strokeStyle = "#00ffff";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0,-player.size);
+  ctx.lineTo(-player.size,player.size);
+  ctx.lineTo(player.size,player.size);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // الأعداء
+  enemies.forEach(e => { if(e.alive){ ctx.fillStyle="#ff5555"; ctx.fillRect(e.x-15,e.y-15,30,30); }});
+
+  // الليزر
+  ctx.strokeStyle="#00ffff";
+  ctx.lineWidth=6;
+  lasers.forEach(l => { ctx.beginPath(); ctx.moveTo(l.x,l.y); ctx.lineTo(l.x,l.y-50); ctx.stroke(); });
+
+  // شاشة الفوز
+  if(gameWon){
+    ctx.fillStyle="white";
+    ctx.font="70px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("لقد فزت", canvas.width/2, canvas.height/2 - 250);
+    ctx.drawImage(winImage, canvas.width/2 - 300, canvas.height/2 - 180, 600, 600);
+  }
 }
 
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
 loop();
+
+// إعادة اللعبة
+function resetGame(){
+  enemies = [];
+  lasers = [];
+  killed = 0;
+  spawned = 0;
+  gameWon = false;
+  retryBtn.style.display="none";
+  player.x = canvas.width/2;
+  player.y = canvas.height - 160;
+}
 </script>
 
 </body>
