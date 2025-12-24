@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>اقتل الزنوج</title>
+<title>لعبة السفينة</title>
 
 <style>
 body {
@@ -52,7 +52,6 @@ canvas.height = innerHeight;
 // الصور
 const mainImage = new Image();
 mainImage.src = "zen.png"; // الصورة الكبيرة عند الفوز
-
 const enemyImage = new Image();
 enemyImage.src = "zen1.png"; // صورة العدو
 
@@ -117,8 +116,15 @@ for(let i=0;i<12;i++){ // عدد أكبر من قبل
 
 function update(){
   if(!gameWon){
+    // تحديث موقع اللاعب
     player.x += joyX*6;
     player.y += joyY*6;
+
+    // حدود الشاشة
+    if(player.x < player.size) player.x = player.size;
+    if(player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+    if(player.y < player.size) player.y = player.size;
+    if(player.y > canvas.height - player.size) player.y = canvas.height - player.size;
 
     enemies.forEach(e=>{if(e.alive)e.y+=1.6;});
 
@@ -142,7 +148,6 @@ function update(){
       img.x += Math.cos(img.angle)*img.speed;
       img.y += Math.sin(img.angle)*img.speed;
 
-      // ابعاد الشاشة
       if(img.x<0) img.x=canvas.width;
       if(img.x>canvas.width) img.x=0;
       if(img.y<0) img.y=canvas.height;
@@ -158,16 +163,18 @@ function draw(){
   ctx.save();
   ctx.translate(player.x, player.y);
 
-  // شكل سفينة متطور: جسم مركزي + جناحين + شعاع أمامي
+  // شكل السفينة محسّن لتظل متناسقة
   ctx.fillStyle = "#00ffcc";
   ctx.strokeStyle = "#00ffff";
   ctx.lineWidth = 3;
+
+  // الجسم البيضاوي
   ctx.beginPath();
   ctx.ellipse(0,0, player.size, player.size/1.5, 0, 0, Math.PI*2);
   ctx.fill();
   ctx.stroke();
 
-  // الجناح الأيسر
+  // جناح أيسر
   ctx.beginPath();
   ctx.moveTo(-player.size,0);
   ctx.lineTo(-player.size-15,5);
@@ -176,7 +183,7 @@ function draw(){
   ctx.fill();
   ctx.stroke();
 
-  // الجناح الأيمن
+  // جناح أيمن
   ctx.beginPath();
   ctx.moveTo(player.size,0);
   ctx.lineTo(player.size+15,5);
@@ -185,7 +192,7 @@ function draw(){
   ctx.fill();
   ctx.stroke();
 
-  // الشعاع الأمامي
+  // شعاع أمامي
   ctx.beginPath();
   ctx.moveTo(0,-player.size*1.2);
   ctx.lineTo(0,-player.size*2);
