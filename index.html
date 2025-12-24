@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar">
 <head>
@@ -50,11 +49,13 @@ const ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-// الصورة الأساسية
+// الصور
 const mainImage = new Image();
-mainImage.src = "zen.png";
+mainImage.src = "zen.png"; // الصورة الكبيرة عند الفوز
 
-// الصور الصغيرة في البداية
+const enemyImage = new Image();
+enemyImage.src = "zen1.png"; // صورة العدو
+
 const smallImg1 = new Image(); smallImg1.src = "zen.png";
 const smallImg2 = new Image(); smallImg2.src = "zen.png";
 
@@ -71,7 +72,7 @@ let gameWon = false;
 // سباون عدو واحد فقط (حد أقصى 10)
 function spawnEnemy() {
   if (spawned < 10) {
-    enemies.push({ x: Math.random()*(canvas.width-60)+30, y: -40, size: 30, alive:true });
+    enemies.push({ x: Math.random()*(canvas.width-60)+30, y: -40, size: 40, alive:true });
     spawned++;
   }
 }
@@ -140,7 +141,6 @@ function draw(){
   ctx.translate(player.x, player.y);
 
   // شكل سفينة متطور: جسم مركزي + جناحين + شعاع أمامي
-  // الجسم المركزي
   ctx.fillStyle = "#00ffcc";
   ctx.strokeStyle = "#00ffff";
   ctx.lineWidth = 3;
@@ -177,8 +177,12 @@ function draw(){
 
   ctx.restore();
 
-  // الأعداء
-  enemies.forEach(e=>{if(e.alive){ctx.fillStyle="#ff5555"; ctx.fillRect(e.x-15,e.y-15,30,30);}});
+  // الأعداء (الآن صور)
+  enemies.forEach(e=>{
+    if(e.alive){
+      ctx.drawImage(enemyImage, e.x - e.size/2, e.y - e.size/2, e.size, e.size);
+    }
+  });
 
   // الليزر
   ctx.strokeStyle="#00ffff";
