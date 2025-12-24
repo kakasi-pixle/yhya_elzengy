@@ -4,151 +4,179 @@
 <meta charset="UTF-8">
 <title>لعبة السفينة</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #000; }
-  canvas { display: block; background: #003; }
+body {
+  margin: 0;
+  overflow: hidden;
+  background: black;
+  touch-action: none;
+}
+canvas {
+  display: block;
+  background: #001;
+}
+#joystick {
+  position: fixed;
+  bottom: 40px;
+  left: 40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+}
+#stick {
+  position: absolute;
+  left: 40px;
+  top: 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+}
 </style>
 </head>
 <body>
 
 <canvas id="game"></canvas>
 
+<div id="joystick">
+  <div id="stick"></div>
+</div>
+
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 
-// مسلسلتك
-let player = {
-  x: canvas.width / 2,
-  y: canvas.height - 100,
-  size: 20
-};
-
-// أعداء
+let player = { x: canvas.width/2, y: canvas.height-150, size: 20 };
 let enemies = [];
-let shots = [];
-
-for (let i = 0; i < 10; i++) {
-  enemies.push({
-    x: Math.random() * (canvas.width - 40) + 20,
-    y: Math.random() * (canvas.height / 2),
-    size: 30,
-    alive: true
-  });
-}
-
+let lasers = [];
+let killed = 0;
+let spawnCount = 0;
 let gameWon = false;
 
-// تحريك بالسحب
-let pointer = { x: player.x, y: player.y };
-canvas.addEventListener("mousemove", (e) => {
-  pointer.x = e.clientX;
-  pointer.y = e.clientY;
-});
-canvas.addEventListener("touchmove", (e) => {
-  pointer.x = e.touches[0].clientX;
-  pointer.y = e.touches[0].clientY;
-});
-
-// اطلاق الطلقة
-canvas.addEventListener("click", shoot);
-canvas.addEventListener("touchstart", shoot);
-
-function shoot() {
-  shots.push({
-    x: player.x,
-    y: player.y,
-    size: 25,
-    dy: -6
-  });
+// 🟥 سباون عدو واحد كل شوية
+function spawnEnemy() {
+  if (spawnCount < 10) {
+    enemies.push({
+      x: Math.random() * (canvas.width - 60) + 30,
+      y: -30,
+      size: 30,
+      alive: true
+    });
+    spawnCount++;
+  }
 }
 
-function update() {
-  // تحريك اللاعب نحو اللمس
-  player.x += (pointer.x - player.x) * 0.2;
-  player.y += (pointer.y - player.y) * 0.2;
+// 🔥 ضرب تلقائي (شعاع)
+setInterval(() => {
+  if (!gameWon) {
+    lasers.push({ x: player.x, y: player.y });
+  }
+}, 400);
 
-  // تحريك الأعداء نحونا
+// 🟥 سباون متدرج
+setInterval(() => {
+  if (!gameWon) spawnEnemy();
+}, 800);
+
+// 🎮 Joystick
+const joystick = document.getElementById("joystick");
+const stick = document.getElementById("stick");
+let joyActive = false;
+let joyX = 0, joyY = 0;
+
+joystick.addEventListener("touchstart", () => joyActive = true);
+joystick.addEventListener("touchend", () => {
+  joyActive = false;
+  joyX = joyY = 0;
+  stick.style.left = "40px";
+  stick.style.top = "40px";
+});
+
+joystick.addEventListener("touchmove", e => {
+  if (!joyActive) return;
+  let rect = joystick.getBoundingClientRect();
+  let x = e.touches[0].clientX - rect.left - 60;
+  let y = e.touches[0].clientY - rect.top - 60;
+  let dist = Math.min(40, Math.hypot(x,y));
+  let angle = Math.atan2(y,x);
+  joyX = Math.cos(angle) * dist / 40;
+  joyY = Math.sin(angle) * dist / 40;
+  stick.style.left = 40 + joyX * 40 + "px";
+  stick.style.top = 40 + joyY * 40 + "px";
+});
+
+function update() {
+  player.x += joyX * 6;
+  player.y += joyY * 6;
+
   enemies.forEach(e => {
-    if (e.alive) {
-      let dx = player.x - e.x;
-      let dy = player.y - e.y;
-      let dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 1) {
-        e.x += (dx / dist) * 1;
-        e.y += (dy / dist) * 1;
-      }
-    }
+    if (e.alive) e.y += 1.5;
   });
 
-  // تحريك الطلقات واكتشاف التصادم
-  shots.forEach((s, i) => {
-    s.y += s.dy;
+  lasers.forEach((l,i) => {
+    l.y -= 10;
     enemies.forEach(e => {
-      if (e.alive && Math.abs(s.x - e.x) < e.size && Math.abs(s.y - e.y) < e.size) {
+      if (e.alive && Math.abs(l.x - e.x) < e.size && Math.abs(l.y - e.y) < e.size) {
         e.alive = false;
-        shots.splice(i, 1);
+        killed++;
       }
     });
+    if (l.y < 0) lasers.splice(i,1);
   });
 
-  // فحص الفوز
-  if (enemies.every(e => !e.alive)) gameWon = true;
+  if (killed === 10) gameWon = true;
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // رسم اللاعب (مثلث)
+  // اللاعب (مثلث)
   ctx.fillStyle = "lime";
   ctx.beginPath();
-  ctx.moveTo(player.x, player.y - player.size);
-  ctx.lineTo(player.x - player.size, player.y + player.size);
-  ctx.lineTo(player.x + player.size, player.y + player.size);
+  ctx.moveTo(player.x, player.y - 20);
+  ctx.lineTo(player.x - 20, player.y + 20);
+  ctx.lineTo(player.x + 20, player.y + 20);
   ctx.fill();
 
-  // رسم الأعداء (مربعات)
+  // الأعداء
   enemies.forEach(e => {
     if (e.alive) {
       ctx.fillStyle = "red";
-      ctx.fillRect(e.x - e.size/2, e.y - e.size/2, e.size, e.size);
+      ctx.fillRect(e.x-15, e.y-15, 30, 30);
     }
   });
 
-  // رسم الطلقات
-  shots.forEach(s => {
-    ctx.fillStyle = "yellow";
+  // الليزر
+  ctx.strokeStyle = "cyan";
+  ctx.lineWidth = 6;
+  lasers.forEach(l => {
     ctx.beginPath();
-    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(l.x, l.y);
+    ctx.lineTo(l.x, l.y - 40);
+    ctx.stroke();
   });
 
-  // لو كسبت
   if (gameWon) {
     ctx.fillStyle = "white";
-    ctx.font = "60px Arial";
+    ctx.font = "50px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("لقد فزت!", canvas.width/2, canvas.height/2 - 100);
+    ctx.fillText("لقد فزت", canvas.width/2, canvas.height/2 - 120);
 
     let img = new Image();
     img.src = "https://qu.ax/tMWYs";
     img.onload = () => {
-      ctx.drawImage(img, canvas.width/2 - 150, canvas.height/2 - 50, 300, 300);
+      ctx.drawImage(img, canvas.width/2 - 150, canvas.height/2 - 80, 300, 300);
     };
   }
 }
 
 function loop() {
-  if (!gameWon) {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-  } else {
-    draw(); // رسم شاشة الفوز
-  }
+  update();
+  draw();
+  requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 
