@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar">
 <head>
@@ -36,11 +35,8 @@ canvas {
 }
 #retryBtn {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 20px 50px;
   font-size: 30px;
+  padding: 20px 50px;
   background: #00ffff;
   border: none;
   border-radius: 15px;
@@ -68,9 +64,15 @@ const ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-// صورة الفوز
+// الصور
 const winImage = new Image();
 winImage.src = "zen.png";
+
+// الصور الصغيرة في البداية
+const smallImg1 = new Image();
+smallImg1.src = "zen.png";
+const smallImg2 = new Image();
+smallImg2.src = "zen.png";
 
 // اللاعب
 let player = { x: canvas.width / 2, y: canvas.height - 160, size: 25 };
@@ -141,13 +143,21 @@ function update() {
 
     if(killed===10) {
       gameWon = true;
-      retryBtn.style.display = "block";
+      retryBtn.style.display="block";
+      retryBtn.style.left = (canvas.width/2 - 75) + "px"; // فوق منتصف الصورة
+      retryBtn.style.top = (canvas.height/2 - 50) + "px";
     }
   }
 }
 
 function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // الصور الصغيرة في البداية
+  if(!gameWon){
+    ctx.drawImage(smallImg1, 50, 50, 80, 80);
+    ctx.drawImage(smallImg2, canvas.width-130, 50, 80, 80);
+  }
 
   // اللاعب (مثلث جميل)
   ctx.save();
@@ -177,8 +187,10 @@ function draw() {
     ctx.fillStyle="white";
     ctx.font="70px Arial";
     ctx.textAlign="center";
-    ctx.fillText("انت زنجي", canvas.width/2, canvas.height/2 - 250);
-    ctx.drawImage(winImage, canvas.width/2 - 300, canvas.height/2 - 180, 600, 600);
+    ctx.fillText("انت زنجي", canvas.width/2, canvas.height/2 - 300);
+
+    // الصورة كبيرة وعريضة جدًا
+    ctx.drawImage(winImage, canvas.width/2 - 350, canvas.height/2 - 180, 700, 700);
   }
 }
 
