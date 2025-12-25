@@ -3,226 +3,197 @@
 <head>
 <meta charset="UTF-8">
 <title>لعبة السفينة</title>
-
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  background: #001022;
-  touch-action: none;
+body{margin:0;overflow:hidden;background:#001022;touch-action:none}
+canvas{display:block}
+#joystick{
+ position:fixed;bottom:40px;left:40px;
+ width:120px;height:120px;border-radius:50%;
+ background:rgba(255,255,255,.2)
 }
-canvas {
-  display: block;
-}
-#joystick {
-  position: fixed;
-  bottom: 40px;
-  left: 40px;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-}
-#stick {
-  position: absolute;
-  left: 40px;
-  top: 40px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #fff;
+#stick{
+ position:absolute;left:40px;top:40px;
+ width:40px;height:40px;border-radius:50%;
+ background:#fff
 }
 </style>
 </head>
-
 <body>
-<canvas id="game"></canvas>
 
-<div id="joystick">
-  <div id="stick"></div>
-</div>
+<canvas id="game"></canvas>
+<div id="joystick"><div id="stick"></div></div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+canvas.width=innerWidth;canvas.height=innerHeight;
 
-// الصور
-const winImage = new Image();
-winImage.src = "zen.png";
-
-const enemyImage = new Image();
-enemyImage.src = "zen1.png";
+// صور
+const imgEnemy=new Image(); imgEnemy.src="zen1.png";
+const imgBoss=new Image();  imgBoss.src="zen3.png";
+const imgAlly=new Image();  imgAlly.src="zen4.png";
+const imgWin=new Image();   imgWin.src="zen.png";
 
 // اللاعب
-let player = {
-  x: canvas.width / 2,
-  y: canvas.height - 140,
-  size: 22
-};
+let player={x:canvas.width/2,y:canvas.height-150,size:22};
+
+// الحليف
+let ally={x:player.x+80,y:player.y+40};
 
 // متغيرات
-let enemies = [];
-let lasers = [];
-let killed = 0;
-let spawned = 0;
-let gameWon = false;
+let enemies=[],lasers=[],allyLasers=[];
+let killed=0,spawned=0;
+let boss=null;
+let gameStage="enemies"; // enemies | boss | win
 
-const enemySize = 90;
+// جويستيك
+const joy=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+let jx=0,jy=0,active=false;
+
+joy.addEventListener("touchstart",()=>active=true);
+joy.addEventListener("touchend",()=>{
+ active=false;jx=jy=0;
+ stick.style.left="40px";stick.style.top="40px";
+});
+joy.addEventListener("touchmove",e=>{
+ if(!active)return;
+ let r=joy.getBoundingClientRect();
+ let x=e.touches[0].clientX-r.left-60;
+ let y=e.touches[0].clientY-r.top-60;
+ let d=Math.min(40,Math.hypot(x,y));
+ let a=Math.atan2(y,x);
+ jx=Math.cos(a)*d/40;
+ jy=Math.sin(a)*d/40;
+ stick.style.left=40+jx*40+"px";
+ stick.style.top=40+jy*40+"px";
+});
 
 // أعداء
-function spawnEnemy() {
-  if (spawned < 10) {
-    enemies.push({
-      x: Math.random() * (canvas.width - enemySize) + enemySize / 2,
-      y: -enemySize,
-      size: enemySize,
-      alive: true
-    });
-    spawned++;
-  }
-}
-
-setInterval(() => { if (!gameWon) spawnEnemy(); }, 900);
-
-// ضرب تلقائي
-setInterval(() => {
-  if (!gameWon) lasers.push({ x: player.x, y: player.y });
-}, 350);
-
-// Joystick
-const joystick = document.getElementById("joystick");
-const stick = document.getElementById("stick");
-let joyX = 0, joyY = 0, active = false;
-
-joystick.addEventListener("touchstart", () => active = true);
-joystick.addEventListener("touchend", () => {
-  active = false;
-  joyX = joyY = 0;
-  stick.style.left = "40px";
-  stick.style.top = "40px";
-});
-
-joystick.addEventListener("touchmove", e => {
-  if (!active) return;
-  let r = joystick.getBoundingClientRect();
-  let x = e.touches[0].clientX - r.left - 60;
-  let y = e.touches[0].clientY - r.top - 60;
-  let d = Math.min(40, Math.hypot(x, y));
-  let a = Math.atan2(y, x);
-  joyX = Math.cos(a) * d / 40;
-  joyY = Math.sin(a) * d / 40;
-  stick.style.left = 40 + joyX * 40 + "px";
-  stick.style.top = 40 + joyY * 40 + "px";
-});
-
-// صور الفوز المتحركة
-let flyingImages = [];
-for (let i = 0; i < 16; i++) {
-  flyingImages.push({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    a: Math.random() * Math.PI * 2,
-    s: 1 + Math.random() * 2,
-    size: 90
+function spawnEnemy(){
+ if(spawned<10){
+  enemies.push({
+   x:Math.random()*(canvas.width-100)+50,
+   y:-100,size:90,alive:true
   });
+  spawned++;
+ }
 }
+setInterval(()=>{if(gameStage==="enemies")spawnEnemy()},900);
 
-function update() {
-  if (!gameWon) {
-    player.x += joyX * 6;
-    player.y += joyY * 6;
+// ضرب اللاعب
+setInterval(()=>{
+ if(gameStage!=="win")
+  lasers.push({x:player.x,y:player.y});
+},350);
 
-    // حدود
-    player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
-    player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y));
+// ضرب الحليف
+setInterval(()=>{
+ if(gameStage==="boss")
+  allyLasers.push({x:ally.x,y:ally.y});
+},500);
 
-    enemies.forEach(e => e.alive && (e.y += 1.6));
+// تحديث
+function update(){
+ if(gameStage!=="win"){
+  player.x+=jx*6; player.y+=jy*6;
+  player.x=Math.max(30,Math.min(canvas.width-30,player.x));
+  player.y=Math.max(30,Math.min(canvas.height-30,player.y));
 
-    lasers.forEach((l, i) => {
-      l.y -= 14;
-      enemies.forEach(e => {
-        if (e.alive && Math.abs(l.x - e.x) < e.size / 2 && Math.abs(l.y - e.y) < e.size / 2) {
-          e.alive = false;
-          killed++;
-        }
-      });
-      if (l.y < 0) lasers.splice(i, 1);
-    });
+  ally.x=player.x+80;
+  ally.y=player.y+40;
+ }
 
-    if (killed === 10) gameWon = true;
-  } else {
-    flyingImages.forEach(f => {
-      f.x += Math.cos(f.a) * f.s;
-      f.y += Math.sin(f.a) * f.s;
-      if (f.x < 0) f.x = canvas.width;
-      if (f.x > canvas.width) f.x = 0;
-      if (f.y < 0) f.y = canvas.height;
-      if (f.y > canvas.height) f.y = 0;
-    });
+ if(gameStage==="enemies"){
+  enemies.forEach(e=>e.alive&&(e.y+=1.6));
+  lasers.forEach((l,i)=>{
+   l.y-=14;
+   enemies.forEach(e=>{
+    if(e.alive && Math.abs(l.x-e.x)<45 && Math.abs(l.y-e.y)<45){
+     e.alive=false;killed++;
+    }
+   });
+   if(l.y<0)lasers.splice(i,1);
+  });
+  if(killed===10){
+   gameStage="boss";
+   boss={x:canvas.width/2,y:150,size:180,hp:100};
   }
+ }
+
+ if(gameStage==="boss"){
+  boss.y+=Math.sin(Date.now()/500)*0.5;
+
+  lasers.forEach((l,i)=>{
+   l.y-=14;
+   if(Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
+    boss.hp--; lasers.splice(i,1);
+   }
+  });
+
+  allyLasers.forEach((l,i)=>{
+   l.y-=10; l.x+=Math.sin(l.y/20)*4;
+   if(Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
+    boss.hp--; allyLasers.splice(i,1);
+   }
+  });
+
+  if(boss.hp<=0) gameStage="win";
+ }
 }
 
-function drawShip() {
-  ctx.save();
-  ctx.translate(player.x, player.y);
-
-  ctx.fillStyle = "#00e6ff";
-  ctx.strokeStyle = "#00ffff";
-  ctx.lineWidth = 3;
-
-  ctx.beginPath();
-  ctx.moveTo(0, -player.size * 2);
-  ctx.lineTo(player.size * 1.2, player.size * 1.5);
-  ctx.lineTo(player.size * 0.6, player.size);
-  ctx.lineTo(0, player.size * 1.3);
-  ctx.lineTo(-player.size * 0.6, player.size);
-  ctx.lineTo(-player.size * 1.2, player.size * 1.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(0, player.size * 1.9, player.size * 0.4, 0, Math.PI * 2);
-  ctx.fillStyle = "#00ffff";
-  ctx.fill();
-
-  ctx.restore();
+// رسم السفينة
+function drawShip(){
+ ctx.save();ctx.translate(player.x,player.y);
+ ctx.fillStyle="#00e6ff";ctx.strokeStyle="#00ffff";ctx.lineWidth=3;
+ ctx.beginPath();
+ ctx.moveTo(0,-40);
+ ctx.lineTo(25,30);
+ ctx.lineTo(0,20);
+ ctx.lineTo(-25,30);
+ ctx.closePath();
+ ctx.fill();ctx.stroke();
+ ctx.restore();
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+// رسم
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
 
+ if(gameStage!=="win"){
   drawShip();
+  ctx.drawImage(imgAlly,ally.x-35,ally.y-35,70,70);
+ }
 
-  enemies.forEach(e => {
-    if (e.alive)
-      ctx.drawImage(enemyImage, e.x - e.size / 2, e.y - e.size / 2, e.size, e.size);
-  });
+ enemies.forEach(e=>{
+  if(e.alive)
+   ctx.drawImage(imgEnemy,e.x-45,e.y-45,90,90);
+ });
 
-  ctx.strokeStyle = "#00ffff";
-  ctx.lineWidth = 6;
-  lasers.forEach(l => {
-    ctx.beginPath();
-    ctx.moveTo(l.x, l.y);
-    ctx.lineTo(l.x, l.y - 60);
-    ctx.stroke();
-  });
+ lasers.forEach(l=>{
+  ctx.strokeStyle="#00ffff";ctx.lineWidth=6;
+  ctx.beginPath();ctx.moveTo(l.x,l.y);
+  ctx.lineTo(l.x,l.y-60);ctx.stroke();
+ });
 
-  if (gameWon) {
-    ctx.drawImage(winImage, canvas.width / 2 - 350, canvas.height / 2 - 350, 700, 700);
-    flyingImages.forEach(f =>
-      ctx.drawImage(winImage, f.x - f.size / 2, f.y - f.size / 2, f.size, f.size)
-    );
-  }
+ allyLasers.forEach(l=>{
+  ctx.strokeStyle="#ff00ff";ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(l.x,l.y);
+  ctx.lineTo(l.x,l.y-40);ctx.stroke();
+ });
+
+ if(boss && gameStage==="boss"){
+  ctx.drawImage(imgBoss,boss.x-90,boss.y-90,180,180);
+  ctx.fillStyle="red";
+  ctx.fillRect(boss.x-60,boss.y-120,120*(boss.hp/100),8);
+ }
+
+ if(gameStage==="win"){
+  ctx.drawImage(imgWin,canvas.width/2-350,canvas.height/2-350,700,700);
+ }
 }
 
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
+function loop(){update();draw();requestAnimationFrame(loop)}
 loop();
 </script>
 </body>
