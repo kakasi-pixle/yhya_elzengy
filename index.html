@@ -19,17 +19,6 @@ canvas{display:block}
  background:#fff
 }
 
-/* زر الضربة القوية */
-#specialBtn{
- position:fixed;bottom:60px;right:40px;
- width:100px;height:100px;border-radius:50%;
- background:linear-gradient(135deg,#7f00ff,#00e6ff);
- color:white;font-weight:bold;font-size:18px;
- display:flex;align-items:center;justify-content:center;
- user-select:none;transition:.3s;display:none;
-}
-#specialBtn.cooldown{opacity:.4}
-
 /* إعادة المحاولة */
 #retry{
  position:fixed;top:60%;left:50%;
@@ -62,7 +51,6 @@ canvas{display:block}
 
 <canvas id="game"></canvas>
 <div id="joystick"><div id="stick"></div></div>
-<div id="specialBtn">NOVA</div>
 <div id="retry">أعد المحاولة</div>
 <div id="bossHp"><div id="bossHpInner"></div></div>
 
@@ -94,15 +82,7 @@ let stage="enemies"; // enemies | boss | win | lose
 let enemies=[],spawned=0,killed=0;
 
 // طلقات
-let lasers=[],specialLasers=[],allyLasers=[],bossLasers=[];
-
-// Cooldown
-let specialCooldown=0;
-const specialBtn=document.getElementById("specialBtn");
-
-// دم البوص
-const bossHp=document.getElementById("bossHp");
-const bossHpInner=document.getElementById("bossHpInner");
+let lasers=[],allyLasers=[],bossLasers=[];
 
 // joystick
 const joy=document.getElementById("joystick");
@@ -127,14 +107,6 @@ joy.addEventListener("touchmove",e=>{
  stick.style.top=40+jy*40+"px";
 });
 
-// زر الضربة القوية
-specialBtn.onclick=()=>{
- if(stage==="boss" && specialCooldown<=0){
-  specialLasers.push({x:player.x,y:player.y});
-  specialCooldown=300;
- }
-};
-
 // إعادة المحاولة
 document.getElementById("retry").onclick=()=>location.reload();
 
@@ -152,33 +124,30 @@ setInterval(()=>{
  if(stage!=="win") lasers.push({x:player.x,y:player.y,hit:false});
 },300);
 
-// ضرب الحليف
+// ضرب الحليف (متعرج)
+let zigzagDir=1;
 setInterval(()=>{
  if(stage==="boss" && ally){
   allyLasers.push({
-   x:ally.x,y:ally.y,
-   vx:(Math.random()-0.5)*2
+   x:ally.x,
+   y:ally.y,
+   vx:(Math.random()-0.5)*2,
+   zigzag:zigzagDir
   });
+  zigzagDir*=-1;
  }
 },450);
 
 // update
+let bossHp=document.getElementById("bossHp");
+let bossHpInner=document.getElementById("bossHpInner");
+
 function update(){
  // حركة اللاعب أسرع
  player.x+=jx*10;
  player.y+=jy*10;
  player.x=Math.max(30,Math.min(canvas.width-30,player.x));
  player.y=Math.max(30,Math.min(canvas.height-30,player.y));
-
- // cooldown
- if(specialCooldown>0){
-  specialCooldown--;
-  specialBtn.classList.add("cooldown");
-  specialBtn.innerText=Math.ceil(specialCooldown/60);
- }else{
-  specialBtn.classList.remove("cooldown");
-  specialBtn.innerText="NOVA";
- }
 
  // مرحلة الأعداء
  if(stage==="enemies"){
@@ -195,7 +164,6 @@ function update(){
    stage="boss";
    boss={x:canvas.width/2,y:140,hp:100};
    ally={x:player.x+80,y:player.y+40};
-   specialBtn.style.display="flex"; // NOVA تظهر مع البوص
    bossHp.style.display="block";
   }
  }
@@ -211,47 +179,40 @@ function update(){
   ally.x=player.x+80;
   ally.y=player.y+40;
 
-  // ضرب اللاعب (البوص يهاجم)
-  bossLasers.push({x:boss.x,y:boss.y});
-
-  // ضرب البوص
+  // ضرب البوص (مثل اللاعب)
   lasers.forEach(l=>{
    l.y-=16;
    if(!l.hit && Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
     boss.hp-=1; l.hit=true;
    }
   });
+
+  // ضرب الحليف (متعرج)
   allyLasers.forEach(l=>{
-   l.y-=12; l.x+=l.vx;
+   l.y-=12;
+   l.x+=l.vx + l.zigzag*2;
    if(Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
     boss.hp-=2; l.y=-999;
    }
   });
-  specialLasers.forEach(l=>{
-   l.y-=14;
-   if(Math.abs(l.x-boss.x)<120 && Math.abs(l.y-boss.y)<120){
-    boss.hp-=20; l.y=-999;
-   }
-  });
-
-  // تحديث شريط الدم
-  bossHpInner.style.width=(boss.hp)+'%';
 
   // ضرب البوص للاعب
+  bossLasers.push({x:boss.x,y:boss.y});
   bossLasers.forEach((l,i)=>{
    l.y+=10;
    if(Math.abs(l.x-player.x)<26 && Math.abs(l.y-player.y)<26){
     stage="lose";
-    specialBtn.style.display="none";
     bossHp.style.display="none";
     document.getElementById("retry").style.display="block";
    }
    if(l.y>canvas.height) bossLasers.splice(i,1);
   });
 
+  // تحديث شريط الدم
+  bossHpInner.style.width=boss.hp+'%';
+
   if(boss.hp<=0){
     stage="win";
-    specialBtn.style.display="none";
     bossHp.style.display="none";
   }
  }
@@ -284,26 +245,30 @@ function draw(){
 
  enemies.forEach(e=>{ if(e.alive) ctx.drawImage(imgEnemy,e.x-45,e.y-45,90,90) });
 
+ // ضرب اللاعب
  lasers.forEach(l=>{
   ctx.strokeStyle="#00ffff";ctx.lineWidth=6;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
   ctx.lineTo(l.x,l.y-60);ctx.stroke();
  });
 
+ // ضرب الحليف متعرج
  allyLasers.forEach(l=>{
   ctx.strokeStyle="#ff00ff";ctx.lineWidth=4;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
   ctx.lineTo(l.x,l.y-40);ctx.stroke();
  });
 
+ // ضرب البوص للاعب (مثل اللاعب بلون مختلف)
  bossLasers.forEach(l=>{
-  ctx.strokeStyle="red";ctx.lineWidth=6;
+  ctx.strokeStyle="orange";ctx.lineWidth=6;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
   ctx.lineTo(l.x,l.y+40);ctx.stroke();
  });
 
  if(stage==="boss") ctx.drawImage(imgBoss,boss.x-90,boss.y-90,180,180);
 
+ // شاشة الفوز
  if(stage==="win"){
   winFly.forEach(f=>{
    f.x+=f.vx; f.y+=f.vy;
@@ -317,7 +282,7 @@ function draw(){
  if(stage==="lose"){
   ctx.fillStyle="red"; ctx.font="bold 48px Arial";
   ctx.textAlign="center";
-  ctx.fillText("لقد خسرت",canvas.width/2,canvas.height/2-50);
+  ctx.fillText("لقد خسرت",canvas.width/2,canvas.height/2+50);
  }
 }
 
