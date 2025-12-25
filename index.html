@@ -3,12 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>لعبة السفينة</title>
-
 <style>
 body{margin:0;overflow:hidden;background:#001022;touch-action:none}
 canvas{display:block}
 
-/* joystick */
 #joystick{
  position:fixed;bottom:40px;left:40px;
  width:120px;height:120px;border-radius:50%;
@@ -20,42 +18,22 @@ canvas{display:block}
  background:#fff
 }
 
-/* زر الضربة القوية */
 #specialBtn{
- position:fixed;
- bottom:60px;
- right:40px;
- width:100px;
- height:100px;
- border-radius:50%;
- background:linear-gradient(135deg,#7f00ff,#e100ff);
- color:white;
- font-weight:bold;
- font-size:18px;
- display:flex;
- align-items:center;
- justify-content:center;
- text-align:center;
- user-select:none;
- opacity:1;
- transition:.3s;
+ position:fixed;bottom:60px;right:40px;
+ width:100px;height:100px;border-radius:50%;
+ background:linear-gradient(135deg,#7f00ff,#00e6ff);
+ color:white;font-weight:bold;font-size:18px;
+ display:flex;align-items:center;justify-content:center;
+ user-select:none;transition:.3s
 }
-#specialBtn.cooldown{
- opacity:.4;
-}
+#specialBtn.cooldown{opacity:.4}
 
-/* إعادة المحاولة */
 #retry{
- position:fixed;
- top:55%;
- left:50%;
+ position:fixed;top:55%;left:50%;
  transform:translate(-50%,-50%);
- background:#00e6ff;
- color:#001022;
- padding:14px 30px;
- font-size:22px;
- border-radius:12px;
- display:none;
+ background:#00e6ff;color:#001022;
+ padding:14px 30px;font-size:22px;
+ border-radius:12px;display:none
 }
 </style>
 </head>
@@ -88,7 +66,7 @@ let stage="enemies";
 let enemies=[],spawned=0,killed=0;
 
 // طلقات
-let lasers=[],specialLasers=[];
+let lasers=[],specialLasers=[],allyLasers=[];
 
 // بوص
 let boss=null,bossDir=1;
@@ -127,7 +105,7 @@ joy.addEventListener("touchmove",e=>{
 specialBtn.onclick=()=>{
  if(stage==="boss" && specialCooldown<=0){
   specialLasers.push({x:player.x,y:player.y});
-  specialCooldown=300; // ≈ 5 ثواني
+  specialCooldown=300; // ~5 ثواني
  }
 };
 
@@ -143,10 +121,20 @@ function spawnEnemy(){
 }
 setInterval(()=>{ if(stage==="enemies")spawnEnemy() },900);
 
-// ضرب عادي
+// ضرب عادي (أبطأ شوية)
 setInterval(()=>{
- if(stage!=="win") lasers.push({x:player.x,y:player.y});
-},300);
+ if(stage!=="win") lasers.push({x:player.x,y:player.y,hit:false});
+},400);
+
+// ضرب الحليف (يشتغل مع البوص)
+setInterval(()=>{
+ if(stage==="boss" && ally){
+  allyLasers.push({
+    x:ally.x,y:ally.y,
+    vx:(Math.random()-0.5)*2
+  });
+ }
+},500);
 
 // update
 function update(){
@@ -172,8 +160,10 @@ function update(){
   lasers.forEach(l=>{
    l.y-=16;
    enemies.forEach(e=>{
-    if(e.alive&&Math.abs(l.x-e.x)<45&&Math.abs(l.y-e.y)<45){
-     e.alive=false;killed++;
+    if(e.alive&&!l.hit&&Math.abs(l.x-e.x)<45&&Math.abs(l.y-e.y)<45){
+     e.alive=false;
+     l.hit=true;
+     killed++;
     }
    });
   });
@@ -190,18 +180,29 @@ function update(){
   if(boss.x>canvas.width-120)bossDir=-1;
   if(boss.x<120)bossDir=1;
 
-  // 🟢 إصلاح الحليف (يتحدث كل فريم)
   ally.x=player.x+80;
   ally.y=player.y+40;
 
   lasers.forEach(l=>{
    l.y-=16;
-   if(Math.abs(l.x-boss.x)<90&&Math.abs(l.y-boss.y)<90)boss.hp--;
+   if(!l.hit && Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
+    boss.hp-=1;
+    l.hit=true;
+   }
+  });
+
+  allyLasers.forEach(l=>{
+   l.y-=12;
+   l.x+=l.vx;
+   if(Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
+    boss.hp-=2;
+    l.y=-999;
+   }
   });
 
   specialLasers.forEach(l=>{
    l.y-=14;
-   if(Math.abs(l.x-boss.x)<120&&Math.abs(l.y-boss.y)<120){
+   if(Math.abs(l.x-boss.x)<120 && Math.abs(l.y-boss.y)<120){
     boss.hp-=20;
     l.y=-999;
    }
@@ -238,6 +239,12 @@ function draw(){
   ctx.strokeStyle="#00ffff";ctx.lineWidth=6;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
   ctx.lineTo(l.x,l.y-60);ctx.stroke();
+ });
+
+ allyLasers.forEach(l=>{
+  ctx.strokeStyle="#ff00ff";ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(l.x,l.y);
+  ctx.lineTo(l.x,l.y-40);ctx.stroke();
  });
 
  specialLasers.forEach(l=>{
