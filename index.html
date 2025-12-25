@@ -38,10 +38,10 @@ const imgWin=new Image();   imgWin.src="zen.png";
 // اللاعب
 let player={x:canvas.width/2,y:canvas.height-150,size:22,alive:true};
 
-// الحليف (يظهر مع البوص)
+// الحليف
 let ally=null;
 
-// حالات اللعبة
+// مراحل
 let stage="enemies"; // enemies | boss | win | lose
 
 // أعداء
@@ -52,6 +52,7 @@ let lasers=[],allyLasers=[],bossLasers=[];
 
 // البوص
 let boss=null;
+let bossDir=1; // اتجاه الحركة
 
 // جويستيك
 const joy=document.getElementById("joystick");
@@ -92,46 +93,35 @@ setInterval(()=>{ if(stage==="enemies") spawnEnemy(); },900);
 setInterval(()=>{
  if(stage==="enemies"||stage==="boss")
   lasers.push({x:player.x,y:player.y});
-},350);
+},300);
 
 // ضرب الحليف
 setInterval(()=>{
  if(stage==="boss" && ally)
   allyLasers.push({x:ally.x,y:ally.y});
-},500);
+},450);
 
 // ضرب البوص
 setInterval(()=>{
  if(stage==="boss" && boss)
   bossLasers.push({x:boss.x,y:boss.y});
-},700);
-
-// صور فوز طايرة
-let winFly=[];
-for(let i=0;i<25;i++){
- winFly.push({
-  x:Math.random()*canvas.width,
-  y:Math.random()*canvas.height,
-  vx:(Math.random()-0.5)*2,
-  vy:(Math.random()-0.5)*2,
-  size:60+Math.random()*40
- });
-}
+},650);
 
 // تحديث
 function update(){
  if(stage==="enemies"||stage==="boss"){
-  player.x+=jx*6;
-  player.y+=jy*6;
+  // 🚀 زيادة سرعة السفينة
+  player.x+=jx*9;
+  player.y+=jy*9;
   player.x=Math.max(30,Math.min(canvas.width-30,player.x));
   player.y=Math.max(30,Math.min(canvas.height-30,player.y));
  }
 
  // مرحلة الأعداء
  if(stage==="enemies"){
-  enemies.forEach(e=>e.alive&&(e.y+=1.6));
+  enemies.forEach(e=>e.alive&&(e.y+=1.8));
   lasers.forEach((l,i)=>{
-   l.y-=14;
+   l.y-=16;
    enemies.forEach(e=>{
     if(e.alive && Math.abs(l.x-e.x)<45 && Math.abs(l.y-e.y)<45){
      e.alive=false;killed++;
@@ -142,49 +132,47 @@ function update(){
 
   if(killed===10){
    stage="boss";
-   boss={x:canvas.width/2,y:150,size:180,hp:100};
+   boss={x:canvas.width/2,y:140,size:180,hp:100};
    ally={x:player.x+80,y:player.y+40};
   }
  }
 
  // مرحلة البوص
  if(stage==="boss"){
-  boss.y+=Math.sin(Date.now()/500)*0.6;
+  // 👾 حركة البوص
+  boss.x+=bossDir*2.2;
+  boss.y+=Math.sin(Date.now()/400)*0.8;
+
+  if(boss.x>canvas.width-120) bossDir=-1;
+  if(boss.x<120) bossDir=1;
+
   ally.x=player.x+80;
   ally.y=player.y+40;
 
   lasers.forEach((l,i)=>{
-   l.y-=14;
+   l.y-=16;
    if(Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
     boss.hp--; lasers.splice(i,1);
    }
   });
 
   allyLasers.forEach((l,i)=>{
-   l.y-=10; l.x+=Math.sin(l.y/25)*4;
+   l.y-=11;
+   l.x+=Math.sin(l.y/20)*5;
    if(Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
     boss.hp--; allyLasers.splice(i,1);
    }
   });
 
   bossLasers.forEach((l,i)=>{
-   l.y+=10;
-   if(Math.abs(l.x-player.x)<25 && Math.abs(l.y-player.y)<25){
+   l.y+=11;
+   if(Math.abs(l.x-player.x)<26 && Math.abs(l.y-player.y)<26){
     stage="lose";
    }
    if(l.y>canvas.height) bossLasers.splice(i,1);
   });
 
   if(boss.hp<=0) stage="win";
- }
-
- // فوز
- if(stage==="win"){
-  winFly.forEach(f=>{
-   f.x+=f.vx; f.y+=f.vy;
-   if(f.x<0||f.x>canvas.width)f.vx*=-1;
-   if(f.y<0||f.y>canvas.height)f.vy*=-1;
-  });
  }
 }
 
@@ -197,9 +185,9 @@ function drawShip(){
  ctx.lineWidth=3;
  ctx.beginPath();
  ctx.moveTo(0,-40);
- ctx.lineTo(28,30);
- ctx.lineTo(0,20);
- ctx.lineTo(-28,30);
+ ctx.lineTo(30,32);
+ ctx.lineTo(0,22);
+ ctx.lineTo(-30,32);
  ctx.closePath();
  ctx.fill(); ctx.stroke();
  ctx.restore();
@@ -244,9 +232,12 @@ function draw(){
  }
 
  if(stage==="win"){
-  winFly.forEach(f=>{
-   ctx.drawImage(imgWin,f.x-f.size/2,f.y-f.size/2,f.size,f.size);
-  });
+  for(let i=0;i<30;i++){
+   ctx.drawImage(imgWin,
+    Math.random()*canvas.width,
+    Math.random()*canvas.height,
+    50,50);
+  }
   ctx.drawImage(imgWin,canvas.width/2-300,canvas.height/2-300,600,600);
  }
 
