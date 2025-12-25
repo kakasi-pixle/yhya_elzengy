@@ -24,7 +24,7 @@ canvas{display:block}
  background:linear-gradient(135deg,#7f00ff,#00e6ff);
  color:white;font-weight:bold;font-size:18px;
  display:flex;align-items:center;justify-content:center;
- user-select:none;transition:.3s
+ user-select:none;transition:.3s;display:none;
 }
 #specialBtn.cooldown{opacity:.4}
 
@@ -33,7 +33,8 @@ canvas{display:block}
  transform:translate(-50%,-50%);
  background:#00e6ff;color:#001022;
  padding:14px 30px;font-size:22px;
- border-radius:12px;display:none
+ border-radius:12px;
+ display:none;
 }
 </style>
 </head>
@@ -50,31 +51,31 @@ const ctx=canvas.getContext("2d");
 canvas.width=innerWidth;
 canvas.height=innerHeight;
 
-// صور
+// الصور
 const imgEnemy=new Image(); imgEnemy.src="zen1.png";
 const imgBoss=new Image();  imgBoss.src="zen3.png";
 const imgAlly=new Image();  imgAlly.src="zen4.png";
 const imgWin=new Image();   imgWin.src="zen.png";
 
-// لاعب
+// اللاعب
 let player={x:canvas.width/2,y:canvas.height-150};
 
-// مراحل
-let stage="enemies";
+// الحليف
+let ally=null;
+
+// البوص
+let boss=null,bossDir=1;
+
+// مراحل اللعبة
+let stage="enemies"; // enemies | boss | win | lose
 
 // أعداء
 let enemies=[],spawned=0,killed=0;
 
 // طلقات
-let lasers=[],specialLasers=[],allyLasers=[];
+let lasers=[],specialLasers=[],allyLasers=[],bossLasers=[];
 
-// بوص
-let boss=null,bossDir=1;
-
-// حليف
-let ally=null;
-
-// cooldown
+// Cooldown
 let specialCooldown=0;
 const specialBtn=document.getElementById("specialBtn");
 
@@ -105,11 +106,11 @@ joy.addEventListener("touchmove",e=>{
 specialBtn.onclick=()=>{
  if(stage==="boss" && specialCooldown<=0){
   specialLasers.push({x:player.x,y:player.y});
-  specialCooldown=300; // ~5 ثواني
+  specialCooldown=300;
  }
 };
 
-// retry
+// إعادة المحاولة
 document.getElementById("retry").onclick=()=>location.reload();
 
 // spawn enemies
@@ -121,26 +122,26 @@ function spawnEnemy(){
 }
 setInterval(()=>{ if(stage==="enemies")spawnEnemy() },900);
 
-// ضرب عادي (أبطأ شوية)
+// ضرب اللاعب
 setInterval(()=>{
  if(stage!=="win") lasers.push({x:player.x,y:player.y,hit:false});
-},400);
+},300);
 
-// ضرب الحليف (يشتغل مع البوص)
+// ضرب الحليف
 setInterval(()=>{
  if(stage==="boss" && ally){
   allyLasers.push({
-    x:ally.x,y:ally.y,
-    vx:(Math.random()-0.5)*2
+   x:ally.x,y:ally.y,
+   vx:(Math.random()-0.5)*2
   });
  }
-},500);
+},450);
 
 // update
 function update(){
- // حركة اللاعب
- player.x+=jx*9;
- player.y+=jy*9;
+ // حركة اللاعب أسرع
+ player.x+=jx*10;
+ player.y+=jy*10;
  player.x=Math.max(30,Math.min(canvas.width-30,player.x));
  player.y=Math.max(30,Math.min(canvas.height-30,player.y));
 
@@ -154,16 +155,14 @@ function update(){
   specialBtn.innerText="NOVA";
  }
 
- // enemies
+ // مرحلة الأعداء
  if(stage==="enemies"){
   enemies.forEach(e=>e.alive&&(e.y+=1.8));
   lasers.forEach(l=>{
    l.y-=16;
    enemies.forEach(e=>{
-    if(e.alive&&!l.hit&&Math.abs(l.x-e.x)<45&&Math.abs(l.y-e.y)<45){
-     e.alive=false;
-     l.hit=true;
-     killed++;
+    if(e.alive&&!l.hit && Math.abs(l.x-e.x)<45 && Math.abs(l.y-e.y)<45){
+     e.alive=false; l.hit=true; killed++;
     }
    });
   });
@@ -171,52 +170,68 @@ function update(){
    stage="boss";
    boss={x:canvas.width/2,y:140,hp:100};
    ally={x:player.x+80,y:player.y+40};
+   specialBtn.style.display="flex"; // NOVA تظهر مع البوص
   }
  }
 
- // boss
+ // مرحلة البوص
  if(stage==="boss"){
-  boss.x+=bossDir*2;
+  boss.x+=bossDir*2.2;
+  boss.y+=Math.sin(Date.now()/400)*0.8;
   if(boss.x>canvas.width-120)bossDir=-1;
   if(boss.x<120)bossDir=1;
 
+  // الحليف يتحرك مع اللاعب
   ally.x=player.x+80;
   ally.y=player.y+40;
 
+  // ضرب اللاعب (البوص الآن يهاجم)
+  bossLasers.push({x:boss.x,y:boss.y});
+
+  // ضرب البوص
   lasers.forEach(l=>{
    l.y-=16;
    if(!l.hit && Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
-    boss.hp-=1;
-    l.hit=true;
+    boss.hp-=1; l.hit=true;
    }
   });
-
   allyLasers.forEach(l=>{
-   l.y-=12;
-   l.x+=l.vx;
+   l.y-=12; l.x+=l.vx;
    if(Math.abs(l.x-boss.x)<90 && Math.abs(l.y-boss.y)<90){
-    boss.hp-=2;
-    l.y=-999;
+    boss.hp-=2; l.y=-999;
    }
   });
-
   specialLasers.forEach(l=>{
    l.y-=14;
    if(Math.abs(l.x-boss.x)<120 && Math.abs(l.y-boss.y)<120){
-    boss.hp-=20;
-    l.y=-999;
+    boss.hp-=20; l.y=-999;
    }
   });
 
-  if(boss.hp<=0)stage="win";
+  // ضرب البوص للاعب
+  bossLasers.forEach((l,i)=>{
+   l.y+=10;
+   if(Math.abs(l.x-player.x)<26 && Math.abs(l.y-player.y)<26){
+    stage="lose"; document.getElementById("retry").style.display="block";
+   }
+   if(l.y>canvas.height) bossLasers.splice(i,1);
+  });
+
+  if(boss.hp<=0) stage="win";
  }
 }
 
 // draw
+let winFly=[];
+for(let i=0;i<25;i++){
+ winFly.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+  vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2,size:60+Math.random()*40});
+}
+
 function draw(){
  ctx.clearRect(0,0,canvas.width,canvas.height);
 
- // سفينة
+ // السفينة
  ctx.save();
  ctx.translate(player.x,player.y);
  ctx.fillStyle="#00e6ff";
@@ -231,9 +246,7 @@ function draw(){
 
  if(ally) ctx.drawImage(imgAlly,ally.x-35,ally.y-35,70,70);
 
- enemies.forEach(e=>{
-  if(e.alive) ctx.drawImage(imgEnemy,e.x-45,e.y-45,90,90);
- });
+ enemies.forEach(e=>{ if(e.alive) ctx.drawImage(imgEnemy,e.x-45,e.y-45,90,90) });
 
  lasers.forEach(l=>{
   ctx.strokeStyle="#00ffff";ctx.lineWidth=6;
@@ -247,20 +260,29 @@ function draw(){
   ctx.lineTo(l.x,l.y-40);ctx.stroke();
  });
 
- specialLasers.forEach(l=>{
-  ctx.strokeStyle="yellow";ctx.lineWidth=12;
+ bossLasers.forEach(l=>{
+  ctx.strokeStyle="red";ctx.lineWidth=6;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
-  ctx.lineTo(l.x,l.y-140);ctx.stroke();
+  ctx.lineTo(l.x,l.y+40);ctx.stroke();
  });
 
- if(stage==="boss"){
-  ctx.drawImage(imgBoss,boss.x-90,boss.y-90,180,180);
-  ctx.fillStyle="red";
-  ctx.fillRect(boss.x-60,boss.y-120,120*(boss.hp/100),8);
- }
+ if(stage==="boss") ctx.drawImage(imgBoss,boss.x-90,boss.y-90,180,180);
 
  if(stage==="win"){
+  // صور الفوز الكبيرة والصغيرة
+  winFly.forEach(f=>{
+   f.x+=f.vx; f.y+=f.vy;
+   if(f.x<0||f.x>canvas.width) f.vx*=-1;
+   if(f.y<0||f.y>canvas.height) f.vy*=-1;
+   ctx.drawImage(imgWin,f.x-f.size/2,f.y-f.size/2,f.size,f.size);
+  });
   ctx.drawImage(imgWin,canvas.width/2-300,canvas.height/2-300,600,600);
+ }
+
+ if(stage==="lose"){
+  ctx.fillStyle="red"; ctx.font="bold 48px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("لقد خسرت",canvas.width/2,canvas.height/2);
  }
 }
 
