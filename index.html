@@ -6,53 +6,57 @@
 <style>
 body{margin:0;overflow:hidden;background:#001022;font-family:Arial}
 canvas{display:block}
+
 .menu{
- position:fixed;top:0;left:0;width:100%;height:100%;
- background:#001022;display:flex;flex-direction:column;
- align-items:center;justify-content:center;z-index:20
+position:fixed;top:0;left:0;width:100%;height:100%;
+background:#001022;display:flex;flex-direction:column;
+align-items:center;justify-content:center;z-index:20
 }
 .menu h1{color:white;margin-bottom:30px}
 .menu button{
- background:#00e6ff;color:#001022;
- border:none;border-radius:14px;
- padding:14px 30px;font-size:22px;
- margin:10px;cursor:pointer
+background:#00e6ff;color:#001022;
+border:none;border-radius:14px;
+padding:14px 30px;font-size:22px;
+margin:10px;cursor:pointer
 }
+
 #joystick{
- position:fixed;bottom:40px;left:40px;
- width:120px;height:120px;border-radius:50%;
- background:rgba(255,255,255,.2);z-index:5
+position:fixed;bottom:40px;left:40px;
+width:120px;height:120px;border-radius:50%;
+background:rgba(255,255,255,.2);z-index:5
 }
 #stick{
- position:absolute;left:40px;top:40px;
- width:40px;height:40px;border-radius:50%;
- background:white
+position:absolute;left:40px;top:40px;
+width:40px;height:40px;border-radius:50%;
+background:white
 }
+
 #bossHp{
- position:fixed;top:20px;left:50%;
- transform:translateX(-50%);
- width:300px;height:20px;border:2px solid white;display:none
+position:fixed;top:20px;left:50%;
+transform:translateX(-50%);
+width:300px;height:20px;border:2px solid white;display:none
 }
 #bossHpInner{height:100%;background:red;width:100%}
+
 #retry{
- position:fixed;top:60%;left:50%;
- transform:translate(-50%,-50%);
- background:#00e6ff;color:#001022;
- padding:14px 30px;font-size:22px;
- border-radius:12px;display:none;z-index:30
+position:fixed;top:55%;left:50%;
+transform:translate(-50%,-50%);
+background:#00e6ff;color:#001022;
+padding:14px 30px;font-size:22px;
+border-radius:12px;display:none;z-index:30
 }
 </style>
 </head>
 <body>
 
-<div id="mainMenu" class="menu">
+<div id="menu" class="menu">
 <h1>مرحبًا في اللعبة</h1>
 <button onclick="startGame()">ابدأ</button>
 <button onclick="openSkins()">اسكنات</button>
 <button onclick="openSettings()">إعدادات</button>
 </div>
 
-<div id="skinsMenu" class="menu" style="display:none">
+<div id="skins" class="menu" style="display:none">
 <h1>الاسكنات</h1>
 <button onclick="setSkin(0)">سهم</button>
 <button onclick="setSkin(1)">مجنحة</button>
@@ -61,9 +65,9 @@ canvas{display:block}
 <button onclick="back()">رجوع</button>
 </div>
 
-<div id="settingsMenu" class="menu" style="display:none">
+<div id="settings" class="menu" style="display:none">
 <h1>الإعدادات</h1>
-<h2 style="color:white">سرعة السفينة: <span id="speedVal">5</span></h2>
+<h2 style="color:white">السرعة: <span id="speedVal">5</span></h2>
 <input type="range" min="1" max="10" value="5" id="speedRange">
 <button onclick="back()">رجوع</button>
 </div>
@@ -79,45 +83,14 @@ const ctx=canvas.getContext("2d")
 canvas.width=innerWidth
 canvas.height=innerHeight
 
-let gameStarted=false
-let skin=0
-let speed=5
-let stage="enemies"
-
 const imgEnemy=new Image();imgEnemy.src="zen1.png"
 const imgBoss=new Image();imgBoss.src="zen3.png"
 const imgAlly=new Image();imgAlly.src="zen4.png"
 const imgWin=new Image();imgWin.src="zen.png"
 
-document.getElementById("speedRange").oninput=e=>{
- speed=+e.target.value
- document.getElementById("speedVal").innerText=speed
-}
+let game=false,skin=0,speed=5,stage="enemies"
 
-function startGame(){
- document.getElementById("mainMenu").style.display="none"
- gameStarted=true
-}
-
-function openSkins(){
- document.getElementById("mainMenu").style.display="none"
- document.getElementById("skinsMenu").style.display="flex"
-}
-
-function openSettings(){
- document.getElementById("mainMenu").style.display="none"
- document.getElementById("settingsMenu").style.display="flex"
-}
-
-function back(){
- document.getElementById("skinsMenu").style.display="none"
- document.getElementById("settingsMenu").style.display="none"
- document.getElementById("mainMenu").style.display="flex"
-}
-
-function setSkin(s){skin=s;back()}
-
-const player={x:canvas.width/2,y:canvas.height-150,size:35}
+const player={x:canvas.width/2,y:canvas.height-120,size:30}
 let jx=0,jy=0,active=false
 
 const joy=document.getElementById("joystick")
@@ -125,83 +98,199 @@ const stick=document.getElementById("stick")
 
 joy.addEventListener("touchstart",()=>active=true)
 joy.addEventListener("touchend",()=>{
- active=false;jx=jy=0
- stick.style.left="40px";stick.style.top="40px"
+active=false;jx=jy=0
+stick.style.left="40px";stick.style.top="40px"
 })
 joy.addEventListener("touchmove",e=>{
- if(!active)return
- let r=joy.getBoundingClientRect()
- let x=e.touches[0].clientX-r.left-60
- let y=e.touches[0].clientY-r.top-60
- let d=Math.min(40,Math.hypot(x,y))
- let a=Math.atan2(y,x)
- jx=Math.cos(a)*d/40
- jy=Math.sin(a)*d/40
- stick.style.left=40+jx*40+"px"
- stick.style.top=40+jy*40+"px"
+if(!active)return
+let r=joy.getBoundingClientRect()
+let x=e.touches[0].clientX-r.left-60
+let y=e.touches[0].clientY-r.top-60
+let d=Math.min(40,Math.hypot(x,y))
+let a=Math.atan2(y,x)
+jx=Math.cos(a)*d/40
+jy=Math.sin(a)*d/40
+stick.style.left=40+jx*40+"px"
+stick.style.top=40+jy*40+"px"
 })
 
+let enemies=[],lasers=[],allyLasers=[],bossLasers=[]
+let spawned=0,killed=0
+let boss=null,ally=null,bossDir=1
+
+document.getElementById("speedRange").oninput=e=>{
+speed=+e.target.value
+document.getElementById("speedVal").innerText=speed
+}
+
+function startGame(){
+document.getElementById("menu").style.display="none"
+game=true
+}
+
+function openSkins(){
+document.getElementById("menu").style.display="none"
+document.getElementById("skins").style.display="flex"
+}
+function openSettings(){
+document.getElementById("menu").style.display="none"
+document.getElementById("settings").style.display="flex"
+}
+function back(){
+document.getElementById("skins").style.display="none"
+document.getElementById("settings").style.display="none"
+document.getElementById("menu").style.display="flex"
+}
+function setSkin(s){skin=s;back()}
+
+setInterval(()=>{
+if(game&&(stage==="enemies"||stage==="boss"))
+lasers.push({x:player.x,y:player.y})
+},300)
+
+setInterval(()=>{
+if(stage==="enemies"&&spawned<10){
+enemies.push({x:Math.random()*(canvas.width-80)+40,y:-60,alive:true})
+spawned++
+}
+},800)
+
+setInterval(()=>{
+if(stage==="boss"&&ally)
+allyLasers.push({x:ally.x,y:ally.y,dir:Math.random()>0.5?1:-1})
+},500)
+
+setInterval(()=>{
+if(stage==="boss"&&boss)
+bossLasers.push({x:boss.x,y:boss.y})
+},700)
+
 function drawShip(){
- ctx.save()
- ctx.translate(player.x,player.y)
- ctx.fillStyle="#00e6ff"
-
- if(skin===0){
-  ctx.beginPath()
-  ctx.moveTo(0,-40)
-  ctx.lineTo(25,30)
-  ctx.lineTo(0,15)
-  ctx.lineTo(-25,30)
-  ctx.closePath()
-  ctx.fill()
- }
-
- if(skin===1){
-  ctx.beginPath()
-  ctx.moveTo(0,-35)
-  ctx.lineTo(15,10)
-  ctx.lineTo(35,25)
-  ctx.lineTo(0,15)
-  ctx.lineTo(-35,25)
-  ctx.lineTo(-15,10)
-  ctx.closePath()
-  ctx.fill()
- }
-
- if(skin===2){
-  ctx.beginPath()
-  ctx.arc(0,0,28,0,Math.PI*2)
-  ctx.fill()
- }
-
- if(skin===3){
-  ctx.fillRect(-25,-25,50,50)
- }
-
- ctx.restore()
+ctx.save()
+ctx.translate(player.x,player.y)
+ctx.fillStyle="#00e6ff"
+if(skin===0){
+ctx.beginPath()
+ctx.moveTo(0,-40)
+ctx.lineTo(25,30)
+ctx.lineTo(-25,30)
+ctx.closePath()
+ctx.fill()
+}
+if(skin===1){
+ctx.beginPath()
+ctx.moveTo(0,-35)
+ctx.lineTo(35,25)
+ctx.lineTo(0,10)
+ctx.lineTo(-35,25)
+ctx.closePath()
+ctx.fill()
+}
+if(skin===2){
+ctx.beginPath()
+ctx.arc(0,0,28,0,Math.PI*2)
+ctx.fill()
+}
+if(skin===3){
+ctx.fillRect(-25,-25,50,50)
+}
+ctx.restore()
 }
 
 function update(){
- if(!gameStarted)return
+if(!game)return
 
- player.x+=jx*speed*2
- player.y+=jy*speed*2
+player.x+=jx*speed*2
+player.y+=jy*speed*2
+player.x=Math.max(player.size,Math.min(canvas.width-player.size,player.x))
+player.y=Math.max(player.size,Math.min(canvas.height-player.size,player.y))
 
- player.x=Math.max(player.size,Math.min(canvas.width-player.size,player.x))
- player.y=Math.max(player.size,Math.min(canvas.height-player.size,player.y))
+lasers.forEach(l=>l.y-=15)
+enemies.forEach(e=>e.alive&&(e.y+=2))
+
+enemies.forEach(e=>{
+lasers.forEach(l=>{
+if(e.alive&&Math.abs(l.x-e.x)<40&&Math.abs(l.y-e.y)<40){
+e.alive=false;killed++
 }
+})
+})
+
+if(killed===10&&stage==="enemies"){
+stage="boss"
+boss={x:canvas.width/2,y:120,hp:100}
+ally={x:player.x+80,y:player.y}
+document.getElementById("bossHp").style.display="block"
+}
+
+if(stage==="boss"){
+boss.x+=bossDir*3
+if(boss.x>canvas.width-100||boss.x<100)bossDir*=-1
+ally.x=player.x+80
+ally.y=player.y
+
+lasers.forEach(l=>{
+if(Math.abs(l.x-boss.x)<80&&Math.abs(l.y-boss.y)<80)boss.hp--
+})
+
+allyLasers.forEach(l=>{
+l.y-=10;l.x+=l.dir*3
+if(Math.abs(l.x-boss.x)<80&&Math.abs(l.y-boss.y)<80)boss.hp-=2
+})
+
+bossLasers.forEach(l=>{
+l.y+=12
+if(Math.abs(l.x-player.x)<25&&Math.abs(l.y-player.y)<25){
+document.getElementById("retry").style.display="block"
+game=false
+}
+})
+
+document.getElementById("bossHpInner").style.width=boss.hp+"%"
+
+if(boss.hp<=0)stage="win"
+}
+}
+
+let winImgs=[]
+for(let i=0;i<20;i++)
+winImgs.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2,s:40})
 
 function draw(){
- ctx.clearRect(0,0,canvas.width,canvas.height)
- if(!gameStarted)return
- drawShip()
+ctx.clearRect(0,0,canvas.width,canvas.height)
+if(!game)return
+
+drawShip()
+enemies.forEach(e=>e.alive&&ctx.drawImage(imgEnemy,e.x-40,e.y-40,80,80))
+lasers.forEach(l=>{
+ctx.strokeStyle="#00ffff";ctx.lineWidth=6
+ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y-60);ctx.stroke()
+})
+allyLasers.forEach(l=>{
+ctx.strokeStyle="#ff00ff";ctx.lineWidth=4
+ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y-40);ctx.stroke()
+})
+bossLasers.forEach(l=>{
+ctx.strokeStyle="#ffaa00";ctx.lineWidth=6
+ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y+60);ctx.stroke()
+})
+
+if(stage==="boss"){
+ctx.drawImage(imgBoss,boss.x-80,boss.y-80,160,160)
+ctx.drawImage(imgAlly,ally.x-30,ally.y-30,60,60)
 }
 
-function loop(){
- update()
- draw()
- requestAnimationFrame(loop)
+if(stage==="win"){
+winImgs.forEach(w=>{
+w.x+=w.vx;w.y+=w.vy
+ctx.drawImage(imgWin,w.x,w.y,w.s,w.s)
+})
+ctx.drawImage(imgWin,canvas.width/2-300,canvas.height/2-300,600,600)
 }
+}
+
+function loop(){update();draw();requestAnimationFrame(loop)}
 loop()
 </script>
 </body>
