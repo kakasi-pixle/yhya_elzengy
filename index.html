@@ -121,7 +121,7 @@ setInterval(()=>{ if(stage==="enemies")spawnEnemy() },900);
 
 // ضرب اللاعب
 setInterval(()=>{
- if(stage!=="win") lasers.push({x:player.x,y:player.y,hit:false});
+ if(stage==="enemies" || stage==="boss") lasers.push({x:player.x,y:player.y,hit:false});
 },300);
 
 // ضرب الحليف (متعرج)
@@ -143,6 +143,8 @@ let bossHp=document.getElementById("bossHp");
 let bossHpInner=document.getElementById("bossHpInner");
 
 function update(){
+ if(stage==="lose" || stage==="win") return; // توقف كل شيء عند الخسارة أو الفوز
+
  // حركة اللاعب أسرع
  player.x+=jx*10;
  player.y+=jy*10;
@@ -187,7 +189,7 @@ function update(){
    }
   });
 
-  // ضرب الحليف (متعرج)
+  // ضرب الحليف متعرج
   allyLasers.forEach(l=>{
    l.y-=12;
    l.x+=l.vx + l.zigzag*2;
@@ -196,10 +198,10 @@ function update(){
    }
   });
 
-  // ضرب البوص للاعب
+  // ضرب البوص للاعب مثل اللاعب
   bossLasers.push({x:boss.x,y:boss.y});
   bossLasers.forEach((l,i)=>{
-   l.y+=10;
+   l.y+=16;
    if(Math.abs(l.x-player.x)<26 && Math.abs(l.y-player.y)<26){
     stage="lose";
     bossHp.style.display="none";
@@ -241,27 +243,27 @@ function draw(){
  ctx.fill();
  ctx.restore();
 
- if(ally) ctx.drawImage(imgAlly,ally.x-35,ally.y-35,70,70);
+ if(stage==="boss" && ally) ctx.drawImage(imgAlly,ally.x-35,ally.y-35,70,70);
 
  enemies.forEach(e=>{ if(e.alive) ctx.drawImage(imgEnemy,e.x-45,e.y-45,90,90) });
 
  // ضرب اللاعب
- lasers.forEach(l=>{
+ if(stage!=="lose") lasers.forEach(l=>{
   ctx.strokeStyle="#00ffff";ctx.lineWidth=6;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
   ctx.lineTo(l.x,l.y-60);ctx.stroke();
  });
 
  // ضرب الحليف متعرج
- allyLasers.forEach(l=>{
+ if(stage!=="lose") allyLasers.forEach(l=>{
   ctx.strokeStyle="#ff00ff";ctx.lineWidth=4;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
   ctx.lineTo(l.x,l.y-40);ctx.stroke();
  });
 
- // ضرب البوص للاعب (مثل اللاعب بلون مختلف)
- bossLasers.forEach(l=>{
-  ctx.strokeStyle="orange";ctx.lineWidth=6;
+ // ضرب البوص للاعب (مثل اللاعب) فقط إذا لم تخسر
+ if(stage!=="lose") bossLasers.forEach(l=>{
+  ctx.strokeStyle="#ffa500";ctx.lineWidth=6;
   ctx.beginPath();ctx.moveTo(l.x,l.y);
   ctx.lineTo(l.x,l.y+40);ctx.stroke();
  });
@@ -279,6 +281,7 @@ function draw(){
   ctx.drawImage(imgWin,canvas.width/2-300,canvas.height/2-300,600,600);
  }
 
+ // شاشة الخسارة
  if(stage==="lose"){
   ctx.fillStyle="red"; ctx.font="bold 48px Arial";
   ctx.textAlign="center";
