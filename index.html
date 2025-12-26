@@ -4,39 +4,52 @@
 <meta charset="UTF-8">
 <title>Game</title>
 <style>
-body{margin:0;overflow:hidden;background:#001022;touch-action:none}
+body{margin:0;overflow:hidden;background:#001022;font-family:Arial}
 canvas{display:block}
-#joystick{
- position:fixed;bottom:40px;left:40px;
- width:120px;height:120px;border-radius:50%;
- background:rgba(255,255,255,.2)
-}
-#stick{
- position:absolute;left:40px;top:40px;
- width:40px;height:40px;border-radius:50%;
- background:#fff
-}
-#retry{
- position:fixed;top:60%;left:50%;
- transform:translate(-50%,-50%);
+button{
  background:#00e6ff;color:#001022;
+ border:none;border-radius:14px;
  padding:14px 30px;font-size:22px;
- border-radius:12px;display:none
+ margin:10px;cursor:pointer
 }
-#bossHp{
- position:fixed;top:20px;left:50%;
- transform:translateX(-50%);
- width:300px;height:20px;border:2px solid #fff;display:none
+.menu{
+ position:fixed;top:0;left:0;
+ width:100%;height:100%;
+ display:flex;flex-direction:column;
+ justify-content:center;align-items:center;
+ background:#001022;z-index:10
 }
-#bossHpInner{height:100%;background:red;width:100%}
+h1{color:white;margin-bottom:30px}
+label{color:white;font-size:20px}
+input[type=range]{width:200px}
+#back{position:fixed;top:20px;left:20px}
 </style>
 </head>
 <body>
 
+<div id="mainMenu" class="menu">
+ <h1>مرحبًا في اللعبة</h1>
+ <button onclick="startGame()">ابدأ</button>
+ <button onclick="openSkins()">اسكنات</button>
+ <button onclick="openSettings()">إعدادات</button>
+</div>
+
+<div id="skinsMenu" class="menu" style="display:none">
+ <h1>اختر شكل السفينة</h1>
+ <button onclick="setSkin(0)">شكل 1</button>
+ <button onclick="setSkin(1)">شكل 2</button>
+ <button onclick="setSkin(2)">شكل 3</button>
+ <button id="back" onclick="back()">رجوع</button>
+</div>
+
+<div id="settingsMenu" class="menu" style="display:none">
+ <h1>الإعدادات</h1>
+ <label>سرعة السفينة: <span id="speedVal">5</span></label>
+ <input type="range" min="1" max="10" value="5" id="speedRange">
+ <button id="back" onclick="back()">رجوع</button>
+</div>
+
 <canvas id="game"></canvas>
-<div id="joystick"><div id="stick"></div></div>
-<div id="retry">أعد المحاولة</div>
-<div id="bossHp"><div id="bossHpInner"></div></div>
 
 <script>
 const canvas=document.getElementById("game")
@@ -44,203 +57,103 @@ const ctx=canvas.getContext("2d")
 canvas.width=innerWidth
 canvas.height=innerHeight
 
-const imgEnemy=new Image();imgEnemy.src="zen1.png"
-const imgBoss=new Image();imgBoss.src="zen3.png"
-const imgAlly=new Image();imgAlly.src="zen4.png"
-const imgWin=new Image();imgWin.src="zen.png"
+let gameStarted=false
+let speed=5
+let skin=0
 
-let stage="enemies"
+const player={x:canvas.width/2,y:canvas.height-120}
 
-let player={x:canvas.width/2,y:canvas.height-150}
-let ally=null
-let boss=null,bossDir=1
-
-let enemies=[],spawned=0,killed=0
-let lasers=[],allyLasers=[],bossLasers=[]
-
-const joy=document.getElementById("joystick")
-const stick=document.getElementById("stick")
-let jx=0,jy=0,active=false
-
-joy.addEventListener("touchstart",()=>active=true)
-joy.addEventListener("touchend",()=>{
- active=false;jx=jy=0
- stick.style.left="40px";stick.style.top="40px"
-})
-joy.addEventListener("touchmove",e=>{
- if(!active)return
- let r=joy.getBoundingClientRect()
- let x=e.touches[0].clientX-r.left-60
- let y=e.touches[0].clientY-r.top-60
- let d=Math.min(40,Math.hypot(x,y))
- let a=Math.atan2(y,x)
- jx=Math.cos(a)*d/40
- jy=Math.sin(a)*d/40
- stick.style.left=40+jx*40+"px"
- stick.style.top=40+jy*40+"px"
-})
-
-document.getElementById("retry").onclick=()=>location.reload()
-
-setInterval(()=>{
- if(stage==="enemies"&&spawned<10){
-  enemies.push({x:Math.random()*(canvas.width-100)+50,y:-100,alive:true})
-  spawned++
- }
-},900)
-
-setInterval(()=>{
- if(stage==="enemies"||stage==="boss"){
-  lasers.push({x:player.x,y:player.y,hit:false})
- }
-},300)
-
-let zig=1
-setInterval(()=>{
- if(stage==="boss"&&ally){
-  allyLasers.push({x:ally.x,y:ally.y,v:zig})
-  zig*=-1
- }
-},400)
-
-setInterval(()=>{
- if(stage==="boss"&&boss){
-  bossLasers.push({x:boss.x,y:boss.y})
- }
-},600)
-
-const bossHp=document.getElementById("bossHp")
-const bossHpInner=document.getElementById("bossHpInner")
-
-function update(){
- if(stage==="lose"||stage==="win")return
-
- player.x+=jx*11
- player.y+=jy*11
- player.x=Math.max(30,Math.min(canvas.width-30,player.x))
- player.y=Math.max(30,Math.min(canvas.height-30,player.y))
-
- if(stage==="enemies"){
-  enemies.forEach(e=>e.alive&&(e.y+=2))
-  lasers.forEach(l=>{
-   l.y-=16
-   enemies.forEach(e=>{
-    if(e.alive&&!l.hit&&Math.abs(l.x-e.x)<45&&Math.abs(l.y-e.y)<45){
-     e.alive=false;l.hit=true;killed++
-    }
-   })
-  })
-  if(killed===10){
-   stage="boss"
-   boss={x:canvas.width/2,y:140,hp:100}
-   ally={x:player.x+80,y:player.y+40}
-   bossHp.style.display="block"
-  }
- }
-
- if(stage==="boss"){
-  boss.x+=bossDir*2.5
-  if(boss.x>canvas.width-120)bossDir=-1
-  if(boss.x<120)bossDir=1
-
-  ally.x=player.x+80
-  ally.y=player.y+40
-
-  lasers.forEach(l=>{
-   l.y-=16
-   if(!l.hit&&Math.abs(l.x-boss.x)<90&&Math.abs(l.y-boss.y)<90){
-    boss.hp-=1;l.hit=true
-   }
-  })
-
-  allyLasers.forEach(l=>{
-   l.y-=12
-   l.x+=l.v*3
-   if(Math.abs(l.x-boss.x)<90&&Math.abs(l.y-boss.y)<90){
-    boss.hp-=2;l.y=-999
-   }
-  })
-
-  bossLasers.forEach((l,i)=>{
-   l.y+=16
-   if(Math.abs(l.x-player.x)<26&&Math.abs(l.y-player.y)<26){
-    stage="lose"
-    bossHp.style.display="none"
-    document.getElementById("retry").style.display="block"
-   }
-   if(l.y>canvas.height)bossLasers.splice(i,1)
-  })
-
-  bossHpInner.style.width=boss.hp+"%"
-
-  if(boss.hp<=0){
-   stage="win"
-   bossHp.style.display="none"
-  }
- }
+document.getElementById("speedRange").oninput=e=>{
+ speed=e.target.value
+ document.getElementById("speedVal").innerText=speed
 }
 
-let winImgs=[]
-for(let i=0;i<30;i++){
- winImgs.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,
- vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2,s:50+Math.random()*40})
+function startGame(){
+ document.getElementById("mainMenu").style.display="none"
+ gameStarted=true
+}
+
+function openSkins(){
+ document.getElementById("mainMenu").style.display="none"
+ document.getElementById("skinsMenu").style.display="flex"
+}
+
+function openSettings(){
+ document.getElementById("mainMenu").style.display="none"
+ document.getElementById("settingsMenu").style.display="flex"
+}
+
+function back(){
+ document.getElementById("skinsMenu").style.display="none"
+ document.getElementById("settingsMenu").style.display="none"
+ document.getElementById("mainMenu").style.display="flex"
+}
+
+function setSkin(s){
+ skin=s
+ back()
+}
+
+let keys={}
+onkeydown=e=>keys[e.key]=true
+onkeyup=e=>keys[e.key]=false
+
+function update(){
+ if(!gameStarted)return
+
+ if(keys["ArrowLeft"])player.x-=speed
+ if(keys["ArrowRight"])player.x+=speed
+ if(keys["ArrowUp"])player.y-=speed
+ if(keys["ArrowDown"])player.y+=speed
+
+ player.x=Math.max(30,Math.min(canvas.width-30,player.x))
+ player.y=Math.max(30,Math.min(canvas.height-30,player.y))
+}
+
+function drawShip(){
+ ctx.save()
+ ctx.translate(player.x,player.y)
+
+ if(skin===0){
+  ctx.fillStyle="#00e6ff"
+  ctx.beginPath()
+  ctx.moveTo(0,-35)
+  ctx.lineTo(28,30)
+  ctx.lineTo(-28,30)
+  ctx.closePath()
+  ctx.fill()
+ }
+
+ if(skin===1){
+  ctx.fillStyle="#ff00ff"
+  ctx.beginPath()
+  ctx.arc(0,0,25,0,Math.PI*2)
+  ctx.fill()
+ }
+
+ if(skin===2){
+  ctx.strokeStyle="#00ff88"
+  ctx.lineWidth=5
+  ctx.beginPath()
+  ctx.moveTo(-30,30)
+  ctx.lineTo(0,-35)
+  ctx.lineTo(30,30)
+  ctx.stroke()
+ }
+
+ ctx.restore()
 }
 
 function draw(){
  ctx.clearRect(0,0,canvas.width,canvas.height)
-
- ctx.save()
- ctx.translate(player.x,player.y)
- ctx.fillStyle="#00e6ff"
- ctx.beginPath()
- ctx.moveTo(0,-40)
- ctx.lineTo(30,32)
- ctx.lineTo(0,22)
- ctx.lineTo(-30,32)
- ctx.closePath()
- ctx.fill()
- ctx.restore()
-
- if(stage==="boss")ctx.drawImage(imgAlly,ally.x-35,ally.y-35,70,70)
-
- enemies.forEach(e=>e.alive&&ctx.drawImage(imgEnemy,e.x-45,e.y-45,90,90))
-
- lasers.forEach(l=>{
-  ctx.strokeStyle="#00ffff";ctx.lineWidth=6
-  ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y-60);ctx.stroke()
- })
-
- allyLasers.forEach(l=>{
-  ctx.strokeStyle="#ff00ff";ctx.lineWidth=4
-  ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y-40);ctx.stroke()
- })
-
- bossLasers.forEach(l=>{
-  ctx.strokeStyle="#ffaa00";ctx.lineWidth=6
-  ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y+60);ctx.stroke()
- })
-
- if(stage==="boss")ctx.drawImage(imgBoss,boss.x-90,boss.y-90,180,180)
-
- if(stage==="win"){
-  winImgs.forEach(w=>{
-   w.x+=w.vx;w.y+=w.vy
-   if(w.x<0||w.x>canvas.width)w.vx*=-1
-   if(w.y<0||w.y>canvas.height)w.vy*=-1
-   ctx.drawImage(imgWin,w.x-w.s/2,w.y-w.s/2,w.s,w.s)
-  })
-  ctx.drawImage(imgWin,canvas.width/2-300,canvas.height/2-300,600,600)
- }
-
- if(stage==="lose"){
-  ctx.fillStyle="red"
-  ctx.font="bold 48px Arial"
-  ctx.textAlign="center"
-  ctx.fillText("لقد خسرت",canvas.width/2,canvas.height/2+50)
- }
+ if(gameStarted)drawShip()
 }
 
-function loop(){update();draw();requestAnimationFrame(loop)}
+function loop(){
+ update()
+ draw()
+ requestAnimationFrame(loop)
+}
 loop()
 </script>
 </body>
